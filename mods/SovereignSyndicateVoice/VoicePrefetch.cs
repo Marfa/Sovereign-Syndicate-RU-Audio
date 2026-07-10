@@ -209,7 +209,7 @@ namespace SovereignSyndicateVoice
                 var title = entry.Title ?? string.Empty;
                 if (!title.StartsWith("START") && !title.StartsWith("Blood"))
                 {
-                    TryAddVoicedLineIfMissing(actorMap, entry, lines, seenKeys);
+                    TryAddVoicedLineIfMissing(conv.id, actorMap, entry, lines, seenKeys);
                 }
 
                 entry = GetSinglePathNext(conv, entry);
@@ -258,12 +258,13 @@ namespace SovereignSyndicateVoice
         }
 
         private static void TryAddVoicedLineIfMissing(
+            int conversationId,
             Dictionary<int, string> actorMap,
             DialogueEntry entry,
             List<PrefetchLine> lines,
             HashSet<string> seenKeys)
         {
-            var key = "e" + entry.id;
+            var key = DialogueVoiceKeys.Primary(entry, conversationId);
             if (seenKeys.Contains(key) || VoiceMod.Player.HasModWav(key))
             {
                 return;
@@ -518,7 +519,7 @@ namespace SovereignSyndicateVoice
 
             try
             {
-                var outDir = VoiceMod.Player.VoiceRoot;
+                var outDir = VoicePaths.DevVoiceRoot;
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = python,
@@ -546,9 +547,18 @@ namespace SovereignSyndicateVoice
             }
 
             var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(LockPath);
-            if (age.TotalMinutes > 45)
+            if (age.TotalSeconds > WorkerIdleExitSec + 60)
             {
-                File.Delete(LockPath);
+                try
+                {
+                    File.Delete(LockPath);
+                }
+                catch
+                {
+                    // ponytail: stale lock; next launch will retry
+                }
+
+                MelonLogger.Msg("VO prefetch: cleared stale worker lock");
                 return false;
             }
 

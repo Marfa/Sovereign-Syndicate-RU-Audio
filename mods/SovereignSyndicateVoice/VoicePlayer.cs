@@ -11,6 +11,8 @@ namespace SovereignSyndicateVoice
 {
     public sealed class VoicePlayer
     {
+        private const string DevVoiceRoot = VoicePaths.DevVoiceRoot;
+
         private static readonly Dictionary<string, string> CharacterTags = new Dictionary<string, string>
         {
             { "atticus", "_ATT_" },
@@ -65,7 +67,7 @@ namespace SovereignSyndicateVoice
             TryPlayDialogueSubtitle(null, key, character);
         }
 
-        public void TryPlayDialogueSubtitle(DialogueEntry entry, string lineText, string character)
+        public void TryPlayDialogueSubtitle(DialogueEntry entry, string lineText, string character, int conversationId = -1)
         {
             if (entry == null || string.IsNullOrEmpty(character))
             {
@@ -73,9 +75,14 @@ namespace SovereignSyndicateVoice
                 return;
             }
 
+            if (conversationId < 0)
+            {
+                conversationId = DialogueManager.lastConversationID;
+            }
+
             StopLoadscreenVo();
 
-            foreach (var key in BuildDialogueKeyOrder(entry, lineText))
+            foreach (var key in DialogueVoiceKeys.BuildLookupOrder(entry, conversationId, lineText))
             {
                 var path = ResolveWavPath(key, character);
                 if (path == null)
@@ -95,7 +102,7 @@ namespace SovereignSyndicateVoice
 
             MelonLogger.Msg("VO miss dialogue: " + entry.id + " (" + character + ")");
             var missText = lineText ?? entry.DialogueText;
-            VoicePrefetch.RequestLine(character, "e" + entry.id, missText);
+            VoicePrefetch.RequestLine(character, DialogueVoiceKeys.Primary(entry, conversationId), missText);
             VoicePendingReplay.Register(entry, character, missText);
         }
 
@@ -114,30 +121,6 @@ namespace SovereignSyndicateVoice
         {
             ActiveLoadscreenKey = null;
             FmodVoicePlayer.Stop();
-        }
-
-        private static IEnumerable<string> BuildDialogueKeyOrder(DialogueEntry entry, string lineText)
-        {
-            if (entry != null)
-            {
-                yield return "e" + entry.id;
-                yield return entry.id.ToString();
-
-                if (!string.IsNullOrEmpty(entry.Title))
-                {
-                    yield return entry.Title;
-                }
-
-                if (!string.IsNullOrEmpty(entry.DialogueText))
-                {
-                    yield return entry.DialogueText;
-                }
-            }
-
-            if (!string.IsNullOrEmpty(lineText))
-            {
-                yield return lineText;
-            }
         }
 
         private void PlayInternal(string key, string character, bool logMiss)
@@ -201,12 +184,29 @@ namespace SovereignSyndicateVoice
 
         private string ResolveWavPath(string key, string character)
         {
+            var path = ResolveWavPathInRoot(_voiceRoot, key, character);
+            if (path != null)
+            {
+                return path;
+            }
+
+            if (string.Equals(_voiceRoot, DevVoiceRoot, StringComparison.OrdinalIgnoreCase) ||
+                !Directory.Exists(DevVoiceRoot))
+            {
+                return null;
+            }
+
+            return ResolveWavPathInRoot(DevVoiceRoot, key, character);
+        }
+
+        private static string ResolveWavPathInRoot(string root, string key, string character)
+        {
             var candidates = BuildKeyCandidates(key).ToList();
             var characters = BuildCharacterSearchOrder(key, character);
 
             foreach (var ch in characters)
             {
-                var dir = Path.Combine(_voiceRoot, ch);
+                var dir = Path.Combine(root, ch);
                 if (!Directory.Exists(dir))
                 {
                     continue;
@@ -303,12 +303,6 @@ namespace SovereignSyndicateVoice
             {
                 yield return normalized;
             }
-
-            var withoutSuffix = Regex.Replace(normalized, @"-\d+$", string.Empty).Trim();
-            if (!string.Equals(withoutSuffix, normalized, StringComparison.Ordinal))
-            {
-                yield return withoutSuffix;
-            }
         }
 
         private static string NormalizeDialogueKey(string key)
@@ -320,7 +314,10 @@ namespace SovereignSyndicateVoice
 
             var value = key.Trim();
             value = Regex.Replace(value, @"[""«»''\u201C\u201D\u2018\u2019]", string.Empty);
-            value = Regex.Replace(value, @"-\d+$", string.Empty);
+            if (Regex.IsMatch(value, @"^e\d+$"))
+            {
+                value = Regex.Replace(value, @"-\d+$", string.Empty);
+            }
             value = value.Replace('\u2014', ' ').Replace('\u2013', ' ').Replace('—', ' ');
             value = Regex.Replace(value, @"\.{2,}$", string.Empty);
             value = Regex.Replace(value, @"\s+", " ").Trim();

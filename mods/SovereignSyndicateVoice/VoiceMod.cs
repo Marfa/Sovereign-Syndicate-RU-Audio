@@ -12,7 +12,7 @@ using UnityEngine;
 
 
 
-[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.4.6", "themarfa")]
+[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.4.9", "themarfa")]
 
 [assembly: MelonGame("Crimson Herring Studios", "Sovereign Syndicate")]
 

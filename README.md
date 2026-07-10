@@ -47,10 +47,20 @@ python scripts\prepare_voice_refs_piper.py
 
 ## Как работает
 
-- Диалоги Pixel Crushers Dialogue System → русский текст → XTTS → `Mods\SovereignSyndicateVoice\voice\{персонаж}\e{id}.wav`
+- Диалоги Pixel Crushers Dialogue System → русский текст → XTTS → `C:\Temp\SovereignSyndicateVoice\voice\{персонаж}\c{convId}_e{entryId}.wav`
+- Ключи привязаны к разговору (`c400044_e17`), без коллизий `e12` / `Tarot Fail` между сценами
 - Prefetch подгружает следующие реплики по текущей ветке диалога
-- При выходе из игры сгенерированные wav **удаляются** (кэш сессии)
+- Озвучка ищется в `Mods\...\voice` и в dev-папке `C:\Temp\SovereignSyndicateVoice\voice`
+- При выходе из игры wav в `Mods\...\voice` **удаляются**; кэш в `C:\Temp\...` сохраняется
 - Loadscreen не озвучивается
+
+## v0.4.9 — исправления озвучки
+
+| Проблема | Решение |
+| --- | --- |
+| Чужая фраза (`e12`, `Tarot Fail`, меню vs реплика `-2`) | Уникальные ключи `c{convId}_e{entryId}`, title убран из поиска |
+| `speaker=?` у Atticus | Fallback по `ActorID` из базы диалогов |
+| Prefetch не генерировал wav | Вывод в `C:\Temp\...`, сброс зависшего `prefetch.lock` |
 
 ## Персонажи
 

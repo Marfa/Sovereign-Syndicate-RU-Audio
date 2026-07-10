@@ -154,7 +154,7 @@ namespace SovereignSyndicateVoice
 
             VoiceMod.Player.StopLoadscreenVo();
 
-            var character = MapSpeaker(subtitle.speakerInfo);
+            var character = MapSpeaker(subtitle.speakerInfo) ?? MapSpeakerFromEntry(entry);
             if (character != null)
             {
                 if (FmodVoicePlayer.IsPlaying)
@@ -170,7 +170,7 @@ namespace SovereignSyndicateVoice
                 " speaker=" + (character ?? "?"));
 
             VoicePrefetch.OnLineShown(entry);
-            VoiceMod.Player.TryPlayDialogueSubtitle(entry, lineText, character);
+            VoiceMod.Player.TryPlayDialogueSubtitle(entry, lineText, character, DialogueManager.lastConversationID);
         }
 
         private static void OnResponseMenu(Response[] responses)
@@ -194,6 +194,32 @@ namespace SovereignSyndicateVoice
             FmodVoicePlayer.Stop();
             VoiceMod.Player?.StopLoadscreenVo();
             MelonLogger.Msg("VO stop: " + reason);
+        }
+
+        private static string MapSpeakerFromEntry(DialogueEntry entry)
+        {
+            if (entry == null)
+            {
+                return null;
+            }
+
+            var db = DialogueManager.masterDatabase;
+            if (db == null)
+            {
+                return null;
+            }
+
+            foreach (var actor in db.actors)
+            {
+                if (actor.id != entry.ActorID)
+                {
+                    continue;
+                }
+
+                return DialogueLineRules.MapActor(actor.Name);
+            }
+
+            return null;
         }
 
         private static string MapSpeaker(CharacterInfo speaker)

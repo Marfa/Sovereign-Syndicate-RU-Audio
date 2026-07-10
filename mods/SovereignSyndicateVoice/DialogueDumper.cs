@@ -82,7 +82,7 @@ namespace SovereignSyndicateVoice
                         grouped[character] = lines;
                     }
 
-                    lines.Add("e" + entry.id + "\t" + text.Replace("\r\n", " ").Replace("\n", " "));
+                    lines.Add(DialogueVoiceKeys.Primary(entry, conversation.id) + "\t" + text.Replace("\r\n", " ").Replace("\n", " "));
                 }
             }
 
