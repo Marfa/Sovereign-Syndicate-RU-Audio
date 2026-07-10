@@ -34,14 +34,14 @@ namespace SovereignSyndicateVoice
     [HarmonyPatch(typeof(AC.RuntimeLanguages), "GetSpeechAudioClip")]
     internal static class AcSpeechAudioPatch
     {
-        internal static bool Prefix(int lineID, AC.Char _speaker, ref AudioClip __result)
+        internal static void Postfix(int lineID, AC.Char _speaker, ref AudioClip __result)
         {
             if (VoiceMod.Player == null)
             {
-                return true;
+                return;
             }
 
-            var key = VoiceMod.Player.ActiveLoadscreenKey;
+            var key = VoiceMod.Player.TakeActiveLoadscreenKey();
             if (string.IsNullOrEmpty(key))
             {
                 key = LoadscreenKeyResolver.FromLineId(lineID, _speaker);
@@ -49,19 +49,16 @@ namespace SovereignSyndicateVoice
 
             if (string.IsNullOrEmpty(key) || !VoiceMod.Player.HasModWav(key))
             {
-                return true;
+                return;
             }
 
             var path = VoiceMod.Player.ResolvePath(key, null);
             if (path == null || !FmodVoicePlayer.TryPlay(path, out _))
             {
-                return true;
+                return;
             }
 
-            VoiceMod.Player.SetActiveLoadscreenKey(key);
             VoiceAudioHost.StopEnglishSpeech();
-            __result = null;
-            return false;
         }
     }
 
@@ -98,6 +95,13 @@ namespace SovereignSyndicateVoice
         private static bool _subscribed;
         private static string _lastHandledKey = string.Empty;
         private static float _lastHandledTime;
+
+        internal static void ResetForSceneLoad()
+        {
+            _subscribed = false;
+            _lastHandledKey = string.Empty;
+            _lastHandledTime = 0f;
+        }
 
         internal static bool IsSubscribed
         {

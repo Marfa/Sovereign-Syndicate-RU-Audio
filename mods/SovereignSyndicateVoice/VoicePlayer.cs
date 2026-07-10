@@ -42,6 +42,13 @@ namespace SovereignSyndicateVoice
             ActiveLoadscreenKey = key;
         }
 
+        internal string TakeActiveLoadscreenKey()
+        {
+            var key = ActiveLoadscreenKey;
+            ActiveLoadscreenKey = null;
+            return key;
+        }
+
         internal bool HasModWav(string key)
         {
             return !string.IsNullOrEmpty(key) && ResolveWavPath(key, null) != null;

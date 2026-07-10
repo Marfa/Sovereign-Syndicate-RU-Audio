@@ -12,7 +12,7 @@ using UnityEngine;
 
 
 
-[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.4.9", "themarfa")]
+[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.5.0", "themarfa")]
 
 [assembly: MelonGame("Crimson Herring Studios", "Sovereign Syndicate")]
 
@@ -95,13 +95,10 @@ namespace SovereignSyndicateVoice
 
 
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
-
         {
-
             EnsureAudioHost();
-
+            DialogueHooks.ResetForSceneLoad();
             DialogueHooks.TrySubscribe();
-
         }
 
 
