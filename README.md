@@ -11,7 +11,8 @@ install_voice_mod.bat "D:\SteamLibrary\steamapps\common\Sovereign Syndicate"
 
 | Файл | Назначение |
 | --- | --- |
-| `install_voice_mod.bat` | Сборка и установка DLL в папку игры |
+| `install_voice_mod.bat` | Сборка из исходников и установка DLL |
+| `install_voice_dll.bat` | Установка готового DLL из релиза (без .NET SDK) |
 | `mods/SovereignSyndicateVoice/` | Исходники MelonLoader-мода |
 | `scripts/generate_dialogue_batch.py` | XTTS worker (prefetch на лету) |
 | `scripts/generate_voice_xtts.py` | Офлайн-батч по TSV |
