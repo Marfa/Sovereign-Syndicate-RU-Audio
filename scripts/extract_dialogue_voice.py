@@ -21,7 +21,7 @@ MAX_PAIR_DISTANCE = 80_000
 
 def clean_ru(text: str) -> str:
     t = text.strip().strip("«»\"' ")
-    t = re.sub(r"\{[^}]+\}", "", t)
+    t = re.sub(r"\{([^}]+)\}", r"\1", t)
     t = re.sub(r"\s+", " ", t).strip()
     return t
 
