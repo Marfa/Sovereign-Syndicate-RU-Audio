@@ -1,0 +1,5 @@
+# Voice generation (Coqui XTTS v2). Install PyTorch first, then:
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
+#   pip install -r requirements-voice.txt
+coqui-tts>=0.27.5
+transformers>=4.57,<5

@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+*.dll
+*.pdb
+*.user
+.vs/
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.wav
+C:\Temp/
