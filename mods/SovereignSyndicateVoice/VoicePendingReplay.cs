@@ -48,24 +48,16 @@ namespace SovereignSyndicateVoice
 
                 if (VoiceMod.Player != null)
                 {
-                    var ready = false;
-                    foreach (var key in DialogueVoiceKeys.BuildLookupOrder(_entry, _conversationId, _lineText))
+                    var key = DialogueVoiceKeys.Primary(_entry, _conversationId);
+                    if (!VoiceMod.Player.HasModWav(key))
                     {
-                        if (!VoiceMod.Player.HasModWav(key))
-                        {
-                            continue;
-                        }
-
-                        MelonLogger.Msg("VO replay ready: id=" + _entryId + " key=" + key);
-                        VoiceMod.Player.TryPlayDialogueSubtitle(_entry, _lineText, _character, _conversationId);
-                        ready = true;
-                        break;
+                        yield return new WaitForSeconds(0.25f);
+                        continue;
                     }
 
-                    if (ready)
-                    {
-                        break;
-                    }
+                    MelonLogger.Msg("VO replay ready: id=" + _entryId + " key=" + key);
+                    VoiceMod.Player.TryPlayDialogueSubtitle(_entry, _lineText, _character, _conversationId);
+                    break;
                 }
 
                 yield return new WaitForSeconds(0.25f);

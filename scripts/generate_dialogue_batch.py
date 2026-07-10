@@ -22,6 +22,7 @@ DEFAULT_OUT = Path(
     r"\Mods\SovereignSyndicateVoice\voice"
 )
 LOCK_PATH = Path(r"C:\Temp\SovereignSyndicateVoice\prefetch.lock")
+SHUTDOWN_PATH = Path(r"C:\Temp\SovereignSyndicateVoice\prefetch_shutdown")
 LOG_PATH = Path(r"C:\Temp\SovereignSyndicateVoice\prefetch.log")
 
 
@@ -84,14 +85,34 @@ def pop_priority_key(key: str, priority_path: Path) -> None:
         priority_path.unlink(missing_ok=True)
 
 
+def configure_torch_runtime() -> None:
+    os.environ.setdefault("OMP_NUM_THREADS", "4")
+    os.environ.setdefault("MKL_NUM_THREADS", "4")
+    import torch
+
+    torch.set_num_threads(4)
+
+
 def load_tts():
     os.environ.setdefault("COQUI_TOS_AGREED", "1")
+    configure_torch_runtime()
     import torch
     from TTS.api import TTS
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     log(f"XTTS device: {device}")
     return TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
+
+
+def unload_tts(tts) -> None:
+    import gc
+
+    import torch
+
+    del tts
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 def generate_one(
@@ -177,31 +198,56 @@ def run_batch(tts, args: argparse.Namespace) -> tuple[int, int]:
             created += 1
         else:
             skipped += 1
-        if args.limit > 0 and created >= args.limit:
+        if args.limit > 0 and (created + skipped) >= args.limit:
             break
     return created, skipped
 
 
+def should_shutdown() -> bool:
+    return SHUTDOWN_PATH.is_file()
+
+
+def write_lock_pid() -> None:
+    LOCK_PATH.write_text(f"pid:{os.getpid()}", encoding="utf-8")
+
+
 def run_daemon(args: argparse.Namespace) -> None:
     LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
-    LOCK_PATH.write_text("daemon", encoding="utf-8")
-    log("XTTS worker started (daemon)")
+    SHUTDOWN_PATH.unlink(missing_ok=True)
+    write_lock_pid()
+    log("XTTS warm worker started")
+    tts = None
     try:
         tts = load_tts()
         idle_loops = 0
+        skip_streak = 0
         max_idle = max(1, args.idle_exit_sec * 2)
         pending: list[tuple[str, str, str]] = []
         while idle_loops < max_idle:
+            if should_shutdown():
+                log("XTTS worker shutdown requested")
+                break
             pending, job = next_job(args, pending)
             if job is None:
                 idle_loops += 1
-                time.sleep(1.0)
+                time.sleep(0.5)
                 continue
             idle_loops = 0
             character, key, text = job
-            generate_one(tts, args.out_dir, args.priority, character, key, text)
-        log("XTTS worker idle exit")
+            if generate_one(tts, args.out_dir, args.priority, character, key, text):
+                skip_streak = 0
+            else:
+                skip_streak += 1
+                if skip_streak >= 8:
+                    idle_loops += 1
+            if should_shutdown():
+                log("XTTS worker shutdown requested")
+                break
+        log("XTTS worker exit")
     finally:
+        if tts is not None:
+            unload_tts(tts)
+        SHUTDOWN_PATH.unlink(missing_ok=True)
         if LOCK_PATH.exists():
             LOCK_PATH.unlink()
 
@@ -222,15 +268,19 @@ def main() -> None:
 
     LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
     if not LOCK_PATH.exists():
-        LOCK_PATH.write_text("batch", encoding="utf-8")
+        write_lock_pid()
+    log(f"XTTS batch started (limit={args.limit})")
+    tts = None
     try:
-        if not args.queue.is_file():
-            log(f"queue missing: {args.queue}")
+        if not args.queue.is_file() and not args.priority.is_file():
+            log("queue missing")
             return
         tts = load_tts()
         created, skipped = run_batch(tts, args)
         log(f"prefetch done: created={created} skipped={skipped}")
     finally:
+        if tts is not None:
+            unload_tts(tts)
         if LOCK_PATH.exists():
             LOCK_PATH.unlink()
 

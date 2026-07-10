@@ -18,11 +18,24 @@ namespace SovereignSyndicateVoice
         private const string LogPath = @"C:\Temp\SovereignSyndicateVoice\prefetch.log";
         private const string PythonScript = @"C:\Users\HYPERPC\IdeaProjects\Sovereign Syndicate\scripts\generate_dialogue_batch.py";
         private const string PythonScriptFallback = @"C:\Temp\SovereignSyndicateVoice\generate_dialogue_batch.py";
-        private const int LookaheadLimit = 2;
-        private const int BranchPrefetchLimit = 6;
-        private const int MenuBranchDepth = 3;
-        private const int MaxQueueSize = 20;
+        private const int LookaheadLimit = 1;
+        private const int BranchPrefetchLimit = 3;
+        private const int MenuBranchDepth = 2;
+        private const int MaxQueueSize = 12;
+        private const string ShutdownPath = @"C:\Temp\SovereignSyndicateVoice\prefetch_shutdown";
         private const int WorkerIdleExitSec = 90;
+        private const float WorkerShutdownDelaySec = 60f;
+        private const float ConversationDebounceSec = 0.5f;
+
+        private static int _lastStartConvId = -1;
+        private static float _lastStartTime;
+        private static float _lastEndTime;
+        private static float _shutdownAt = -1f;
+        private static Process _workerProcess;
+        private static bool _launchInProgress;
+        private static float _launchStartedAt;
+        private static string _lastMenuSignature = string.Empty;
+        private static float _lastMenuTime;
 
         internal static void OnConversationStart(Transform actor)
         {
@@ -30,6 +43,15 @@ namespace SovereignSyndicateVoice
             {
                 return;
             }
+
+            var convId = DialogueManager.lastConversationID;
+            if (convId == _lastStartConvId && Time.time - _lastStartTime < ConversationDebounceSec)
+            {
+                return;
+            }
+
+            _lastStartConvId = convId;
+            _lastStartTime = Time.time;
 
             var db = DialogueManager.masterDatabase;
             if (db == null)
@@ -58,7 +80,6 @@ namespace SovereignSyndicateVoice
 
             WriteQueue(lines);
             MelonLogger.Msg("VO prefetch: " + lines.Count + " on-path for " + conv.Title);
-            TryLaunchGenerator(lines.Count);
         }
 
         internal static void OnLineShown(DialogueEntry entry)
@@ -98,7 +119,6 @@ namespace SovereignSyndicateVoice
             }
 
             MelonLogger.Msg("VO prefetch ahead: " + string.Join(", ", upcoming.Select(l => l.Key)));
-            TryLaunchGenerator(upcoming.Count);
         }
 
         internal static void OnResponseMenu(Response[] responses)
@@ -143,6 +163,15 @@ namespace SovereignSyndicateVoice
                 return;
             }
 
+            var menuSignature = conv.id + ":" + string.Join(",", lines.Select(l => l.Key).OrderBy(k => k));
+            if (menuSignature == _lastMenuSignature && Time.time - _lastMenuTime < ConversationDebounceSec)
+            {
+                return;
+            }
+
+            _lastMenuSignature = menuSignature;
+            _lastMenuTime = Time.time;
+
             PrependQueue(lines);
             for (var i = lines.Count - 1; i >= 0; i--)
             {
@@ -150,7 +179,6 @@ namespace SovereignSyndicateVoice
             }
 
             MelonLogger.Msg("VO prefetch menu: " + string.Join(", ", lines.Select(l => l.Key)));
-            TryLaunchGenerator(lines.Count);
         }
 
         internal static void RequestLine(string character, string key, string textRu)
@@ -169,7 +197,57 @@ namespace SovereignSyndicateVoice
             PrependQueue(new List<PrefetchLine> { line });
             WritePriority(line);
             MelonLogger.Msg("VO prefetch hot: " + key);
-            TryLaunchGenerator(1);
+            EnsureWarmWorker(force: true);
+        }
+
+        internal static void OnSceneLoaded()
+        {
+            ForceShutdown("scene load");
+        }
+
+        internal static void OnConversationEnd()
+        {
+            if (Time.time - _lastEndTime < ConversationDebounceSec)
+            {
+                return;
+            }
+
+            _lastEndTime = Time.time;
+            ClearPrefetchFiles();
+            ScheduleWorkerShutdown();
+            MelonLogger.Msg("VO prefetch: worker shutdown scheduled (" + WorkerShutdownDelaySec + "s)");
+        }
+
+        internal static void ForceShutdown(string reason)
+        {
+            _shutdownAt = -1f;
+            _launchInProgress = false;
+            if (!IsWorkerRunning())
+            {
+                ClearWorkerLock();
+                return;
+            }
+
+            ClearPrefetchFiles();
+            RequestWorkerShutdown();
+            StopWorkerProcess();
+            MelonLogger.Msg("VO prefetch: worker stopped (" + reason + ")");
+        }
+
+        internal static void Tick()
+        {
+            if (_shutdownAt < 0f || Time.time < _shutdownAt)
+            {
+                return;
+            }
+
+            _shutdownAt = -1f;
+            if (!IsWorkerRunning() && (_workerProcess == null || _workerProcess.HasExited))
+            {
+                return;
+            }
+
+            ForceShutdown("idle timeout");
         }
 
         private static List<PrefetchLine> GetUpcomingMissing(
@@ -471,19 +549,28 @@ namespace SovereignSyndicateVoice
             return false;
         }
 
-        private static void TryLaunchGenerator(int limit)
+        private static void EnsureWarmWorker(bool force = false)
         {
+            CancelScheduledShutdown();
             if (IsWorkerRunning())
             {
-                return;
+                if (_workerProcess != null && _workerProcess.HasExited)
+                {
+                    ClearWorkerLock();
+                    _workerProcess = null;
+                }
+                else
+                {
+                    return;
+                }
             }
 
-            if (!HasPendingWork())
+            if (!force && !HasPendingWork())
             {
                 return;
             }
 
-            StartWorker();
+            StartDaemonWorker();
         }
 
         private static bool HasPendingWork()
@@ -507,8 +594,131 @@ namespace SovereignSyndicateVoice
             return false;
         }
 
-        private static void StartWorker()
+        private static void CancelScheduledShutdown()
         {
+            _shutdownAt = -1f;
+            ClearShutdownFlag();
+        }
+
+        private static void ScheduleWorkerShutdown()
+        {
+            _shutdownAt = Time.time + WorkerShutdownDelaySec;
+        }
+
+        private static void ClearPrefetchFiles()
+        {
+            try
+            {
+                if (File.Exists(QueuePath))
+                {
+                    File.Delete(QueuePath);
+                }
+
+                if (File.Exists(PriorityPath))
+                {
+                    File.Delete(PriorityPath);
+                }
+            }
+            catch
+            {
+                // ponytail: worker may still drain in-memory pending once
+            }
+        }
+
+        private static void ClearWorkerLock()
+        {
+            try
+            {
+                if (File.Exists(LockPath))
+                {
+                    File.Delete(LockPath);
+                }
+            }
+            catch
+            {
+                // ponytail: stale lock cleared on next launch
+            }
+        }
+
+        private static void StopWorkerProcess()
+        {
+            try
+            {
+                if (_workerProcess != null && !_workerProcess.HasExited)
+                {
+                    KillProcess(_workerProcess);
+                }
+                else if (TryReadLockPid(out var pid) && IsProcessAlive(pid))
+                {
+                    KillProcess(Process.GetProcessById(pid));
+                }
+            }
+            catch
+            {
+                // ponytail: lock cleanup below still unblocks relaunch
+            }
+            finally
+            {
+                _workerProcess = null;
+                _launchInProgress = false;
+                ClearWorkerLock();
+                ClearShutdownFlag();
+            }
+        }
+
+        private static void KillProcess(Process process)
+        {
+            if (process == null || process.HasExited)
+            {
+                return;
+            }
+
+            if (!process.WaitForExit(3000))
+            {
+                process.Kill();
+                process.WaitForExit(2000);
+            }
+        }
+
+        private static void ClearShutdownFlag()
+        {
+            try
+            {
+                if (File.Exists(ShutdownPath))
+                {
+                    File.Delete(ShutdownPath);
+                }
+            }
+            catch
+            {
+                // ponytail: best-effort; daemon also clears on start
+            }
+        }
+
+        private static void RequestWorkerShutdown()
+        {
+            try
+            {
+                File.WriteAllText(ShutdownPath, "1", Encoding.UTF8);
+            }
+            catch
+            {
+                // ponytail: idle exit still releases memory if write fails
+            }
+        }
+
+        private static void StartDaemonWorker()
+        {
+            if (_launchInProgress && Time.time - _launchStartedAt < 30f)
+            {
+                return;
+            }
+
+            if (IsWorkerRunning())
+            {
+                return;
+            }
+
             var python = @"C:\Temp\SovereignSyndicateVoice\venv\Scripts\python.exe";
             var script = File.Exists(PythonScript) ? PythonScript : PythonScriptFallback;
             if (!File.Exists(python) || !File.Exists(script))
@@ -517,8 +727,13 @@ namespace SovereignSyndicateVoice
                 return;
             }
 
+            _launchInProgress = true;
+            _launchStartedAt = Time.time;
+
             try
             {
+                Directory.CreateDirectory(Path.GetDirectoryName(LockPath));
+                File.WriteAllText(LockPath, "starting", Encoding.UTF8);
                 var outDir = VoicePaths.DevVoiceRoot;
                 var startInfo = new ProcessStartInfo
                 {
@@ -530,39 +745,92 @@ namespace SovereignSyndicateVoice
                     CreateNoWindow = true,
                     WorkingDirectory = Path.GetDirectoryName(script),
                 };
-                Process.Start(startInfo);
-                MelonLogger.Msg("VO prefetch: XTTS worker started");
+                _workerProcess = Process.Start(startInfo);
+                MelonLogger.Msg("VO prefetch: XTTS warm worker started");
             }
             catch (Exception ex)
             {
+                try
+                {
+                    if (File.Exists(LockPath))
+                    {
+                        File.Delete(LockPath);
+                    }
+                }
+                catch
+                {
+                    // ponytail: stale starting lock cleared on next launch
+                }
+
                 MelonLogger.Warning("VO prefetch worker launch failed: " + ex.Message);
+            }
+            finally
+            {
+                _launchInProgress = false;
             }
         }
 
-        private static bool IsWorkerRunning()
+        private static bool TryReadLockPid(out int pid)
         {
+            pid = 0;
             if (!File.Exists(LockPath))
             {
                 return false;
             }
 
-            var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(LockPath);
-            if (age.TotalSeconds > WorkerIdleExitSec + 60)
+            var text = File.ReadAllText(LockPath, Encoding.UTF8).Trim();
+            if (!text.StartsWith("pid:", StringComparison.Ordinal))
             {
-                try
-                {
-                    File.Delete(LockPath);
-                }
-                catch
-                {
-                    // ponytail: stale lock; next launch will retry
-                }
-
-                MelonLogger.Msg("VO prefetch: cleared stale worker lock");
                 return false;
             }
 
-            return true;
+            return int.TryParse(text.Substring(4), out pid) && pid > 0;
+        }
+
+        private static bool IsProcessAlive(int pid)
+        {
+            if (pid <= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                var process = Process.GetProcessById(pid);
+                return process != null && !process.HasExited;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool IsWorkerRunning()
+        {
+            if (_workerProcess != null && !_workerProcess.HasExited)
+            {
+                return true;
+            }
+
+            if (TryReadLockPid(out var pid) && IsProcessAlive(pid))
+            {
+                return true;
+            }
+
+            if (File.Exists(LockPath))
+            {
+                var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(LockPath);
+                if (age.TotalSeconds > 45f && string.Equals(
+                        File.ReadAllText(LockPath, Encoding.UTF8).Trim(),
+                        "starting",
+                        StringComparison.Ordinal))
+                {
+                    ClearWorkerLock();
+                    MelonLogger.Msg("VO prefetch: cleared abandoned worker lock");
+                }
+            }
+
+            return false;
         }
 
         private sealed class PrefetchLine

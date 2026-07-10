@@ -98,7 +98,6 @@ namespace SovereignSyndicateVoice
 
         internal static void ResetForSceneLoad()
         {
-            _subscribed = false;
             _lastHandledKey = string.Empty;
             _lastHandledTime = 0f;
         }
@@ -186,6 +185,7 @@ namespace SovereignSyndicateVoice
         private static void OnConversationEnd(Transform actor)
         {
             StopCurrentVo("conversation end");
+            VoicePrefetch.OnConversationEnd();
         }
 
         private static void StopCurrentVo(string reason)

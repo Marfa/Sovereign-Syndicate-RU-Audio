@@ -12,7 +12,7 @@ using UnityEngine;
 
 
 
-[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.5.1", "themarfa")]
+[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.5.7", "themarfa")]
 
 [assembly: MelonGame("Crimson Herring Studios", "Sovereign Syndicate")]
 
@@ -94,8 +94,20 @@ namespace SovereignSyndicateVoice
 
 
 
+        private static string _lastSceneKey = string.Empty;
+        private static float _lastSceneLoadTime;
+
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
         {
+            var sceneKey = buildIndex + ":" + (sceneName ?? string.Empty);
+            var now = Time.unscaledTime;
+            if (sceneKey != _lastSceneKey || now - _lastSceneLoadTime >= 1.5f)
+            {
+                _lastSceneKey = sceneKey;
+                _lastSceneLoadTime = now;
+                VoicePrefetch.OnSceneLoaded();
+            }
+
             EnsureAudioHost();
             DialogueHooks.ResetForSceneLoad();
             DialogueHooks.TrySubscribe();
@@ -129,9 +141,16 @@ namespace SovereignSyndicateVoice
 
 
 
+        public override void OnUpdate()
+        {
+            VoicePrefetch.Tick();
+        }
+
         public override void OnApplicationQuit()
 
         {
+
+            VoicePrefetch.ForceShutdown("game exit");
 
             if (Player != null)
             {

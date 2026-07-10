@@ -45,23 +45,7 @@ namespace SovereignSyndicateVoice
             }
 
             yield return Scoped(entry, conversationId);
-
-            if (!string.IsNullOrEmpty(lineText))
-            {
-                yield return lineText;
-            }
-
-            if (!string.IsNullOrEmpty(entry.DialogueText) &&
-                !string.Equals(entry.DialogueText, lineText, StringComparison.Ordinal))
-            {
-                yield return entry.DialogueText;
-            }
-
-            if (IsGenericTitle(entry.Title))
-            {
-                yield return "e" + entry.id;
-                yield return entry.id.ToString();
-            }
+            yield return "e" + entry.id;
         }
     }
 }
