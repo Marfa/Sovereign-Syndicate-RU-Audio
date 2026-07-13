@@ -99,6 +99,7 @@ namespace SovereignSyndicateVoice
 
                 if (FmodVoicePlayer.TryPlay(path, out var duration))
                 {
+                    VoicePendingReplay.Cancel();
                     MelonLogger.Msg("VO play dialogue: id=" + entry.id + " key=" + key + " (" + duration.ToString("F1") + "s)");
                     return;
                 }

@@ -12,7 +12,7 @@ using UnityEngine;
 
 
 
-[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.5.7", "themarfa")]
+[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.5.13", "themarfa")]
 
 [assembly: MelonGame("Crimson Herring Studios", "Sovereign Syndicate")]
 
@@ -105,6 +105,7 @@ namespace SovereignSyndicateVoice
             {
                 _lastSceneKey = sceneKey;
                 _lastSceneLoadTime = now;
+                VoicePendingReplay.Cancel();
                 VoicePrefetch.OnSceneLoaded();
             }
 

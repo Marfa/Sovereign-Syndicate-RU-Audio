@@ -7,6 +7,7 @@ from pathlib import Path
 _QUOTE_RE = re.compile(r'[""«»\'\u201C\u201D\u2018\u2019]')
 _TAG_RE = re.compile(r"\{([^}]+)\}")
 _HTML_RE = re.compile(r"<[^>]+>")
+_ACTION_RE = re.compile(r"\*+([^*]+)\*+")
 _SPACE_RE = re.compile(r"\s+")
 
 
@@ -17,7 +18,8 @@ def unwrap_game_tags(text: str) -> str:
 
 def normalize_tts_text(text: str) -> str:
     """Strip game/UI markup that confuses XTTS edge phonemes (и, о clicks)."""
-    value = _HTML_RE.sub("", text or "")
+    value = _ACTION_RE.sub(" ", text or "")
+    value = _HTML_RE.sub("", value)
     value = unwrap_game_tags(value)
     value = _QUOTE_RE.sub("", value)
     value = value.replace("\u2014", " ").replace("\u2013", " ").replace("—", " ")
@@ -29,6 +31,8 @@ if __name__ == "__main__":
     sample = "«Вы же с {Континента}? Испанец, не так ли?»"
     assert "Континента" in normalize_tts_text(sample)
     assert "{" not in normalize_tts_text(sample)
+    assert "Вздыхает" not in normalize_tts_text("*Вздыхает* «Привет»")
+    assert "Привет" in normalize_tts_text("*Вздыхает* «Привет»")
 
 
 def cleanup_wav(

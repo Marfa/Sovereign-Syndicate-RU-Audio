@@ -54,6 +54,14 @@ python scripts\prepare_voice_refs_piper.py
 - При выходе из игры wav в `Mods\...\voice` **удаляются**; кэш в `C:\Temp\...` сохраняется
 - Loadscreen не озвучивается
 
+## v0.5.13 — автоматон Отто и stale replay
+
+| Проблема | Решение |
+| --- | --- |
+| Озвучивался **автоматон Отто** (не Тедди) | Актор `Otto` исключён из VO; Teddy/Redgrave по-прежнему в `voice/otto/` |
+| Поздний replay чужой фразы (`VO replay ready` через 10+ с) | Replay отменяется при переходе к следующей реплике, load screen, конце диалога |
+| `*Вздыхает*` уходило в XTTS | `scripts/xtts_audio.py` вырезает `*…*` / `**…**` |
+
 ## v0.5.7 — оптимизация XTTS worker
 
 | Проблема | Решение |
@@ -87,7 +95,8 @@ DLL ставится в `Mods\SovereignSyndicateVoice.dll` (не в подпап
 | --- | --- | --- |
 | Atticus | `voice/atticus/` | клон по ref |
 | Clara | `voice/clara/` | клон по ref |
-| Otto | `voice/otto/` | клон по ref |
+| Teddy (TED-маршрут) | `voice/otto/` | клон по ref |
+| Otto (автоматон) | — | не озвучивается |
 
 Референсы: `C:\Temp\SovereignSyndicateVoice\refs\{персонаж}_ref.wav`
 

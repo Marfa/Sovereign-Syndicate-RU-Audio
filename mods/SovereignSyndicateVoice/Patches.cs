@@ -67,6 +67,7 @@ namespace SovereignSyndicateVoice
     {
         internal static void Prefix()
         {
+            VoicePendingReplay.Cancel();
             VoiceMod.Player?.StopAllVo();
             MelonLogger.Msg("VO stop: loadscreen exit");
         }
@@ -77,6 +78,7 @@ namespace SovereignSyndicateVoice
     {
         internal static void Postfix()
         {
+            VoicePendingReplay.Cancel();
             VoiceMod.Player?.StopAllVo();
         }
     }
@@ -172,8 +174,10 @@ namespace SovereignSyndicateVoice
                 "VO dialogue [" + source + "]: id=" + entry.id + " title=" + entry.Title + " text=" + (lineText ?? "?") +
                 " speaker=" + (character ?? "?"));
 
+            var convId = DialogueManager.lastConversationID;
+            VoicePendingReplay.OnLineShown(entry.id, convId);
             VoicePrefetch.OnLineShown(entry);
-            VoiceMod.Player.TryPlayDialogueSubtitle(entry, lineText, character, DialogueManager.lastConversationID);
+            VoiceMod.Player.TryPlayDialogueSubtitle(entry, lineText, character, convId);
         }
 
         private static void OnResponseMenu(Response[] responses)
@@ -184,6 +188,7 @@ namespace SovereignSyndicateVoice
 
         private static void OnConversationEnd(Transform actor)
         {
+            VoicePendingReplay.Cancel();
             StopCurrentVo("conversation end");
             VoicePrefetch.OnConversationEnd();
         }
@@ -233,23 +238,8 @@ namespace SovereignSyndicateVoice
                 return null;
             }
 
-            var name = (speaker.nameInDatabase ?? speaker.Name ?? string.Empty).ToLowerInvariant();
-            if (name.Contains("atticus") || name.Contains("daley") || name.Contains("daily"))
-            {
-                return "atticus";
-            }
-
-            if (name.Contains("clara"))
-            {
-                return "clara";
-            }
-
-            if (name.Contains("otto") || name.Contains("teddy") || name.Contains("ted"))
-            {
-                return "otto";
-            }
-
-            return null;
+            var name = speaker.nameInDatabase ?? speaker.Name ?? string.Empty;
+            return DialogueLineRules.MapActor(name);
         }
     }
 }
