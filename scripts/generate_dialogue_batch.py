@@ -14,16 +14,38 @@ if str(_SCRIPT_DIR) not in sys.path:
 
 from xtts_audio import cleanup_wav, normalize_tts_text
 
-REFS_DIR = Path(r"C:\Temp\SovereignSyndicateVoice\refs")
-DEFAULT_QUEUE = Path(r"C:\Temp\SovereignSyndicateVoice\prefetch_queue.tsv")
-DEFAULT_PRIORITY = Path(r"C:\Temp\SovereignSyndicateVoice\prefetch_priority.tsv")
+REFS_DIR = Path(r"C:\Temp\SovereignSyndicateVoice\refs")  # overridden in apply_runtime_paths
+DEFAULT_QUEUE = Path(
+    r"C:\Program Files (x86)\Steam\steamapps\common\Sovereign Syndicate"
+    r"\Mods\SovereignSyndicateVoice\prefetch_queue.tsv"
+)
+DEFAULT_PRIORITY = Path(
+    r"C:\Program Files (x86)\Steam\steamapps\common\Sovereign Syndicate"
+    r"\Mods\SovereignSyndicateVoice\prefetch_priority.tsv"
+)
 DEFAULT_OUT = Path(
     r"C:\Program Files (x86)\Steam\steamapps\common\Sovereign Syndicate"
     r"\Mods\SovereignSyndicateVoice\voice"
 )
-LOCK_PATH = Path(r"C:\Temp\SovereignSyndicateVoice\prefetch.lock")
-SHUTDOWN_PATH = Path(r"C:\Temp\SovereignSyndicateVoice\prefetch_shutdown")
-LOG_PATH = Path(r"C:\Temp\SovereignSyndicateVoice\prefetch.log")
+DEFAULT_MOD_ROOT = DEFAULT_OUT.parent
+LOCK_PATH = DEFAULT_MOD_ROOT / "prefetch.lock"
+SHUTDOWN_PATH = DEFAULT_MOD_ROOT / "prefetch_shutdown"
+LOG_PATH = DEFAULT_MOD_ROOT / "prefetch.log"
+
+
+def apply_runtime_paths(args: argparse.Namespace) -> None:
+    global REFS_DIR, LOCK_PATH, SHUTDOWN_PATH, LOG_PATH
+    mod_root = Path(args.mod_root) if args.mod_root else Path(args.out_dir).parent
+    args.mod_root = mod_root
+    args.out_dir = Path(args.out_dir)
+    args.queue = Path(args.queue)
+    args.priority = Path(args.priority)
+    REFS_DIR = Path(args.refs_dir) if args.refs_dir else mod_root / "refs"
+    LOCK_PATH = mod_root / "prefetch.lock"
+    SHUTDOWN_PATH = mod_root / "prefetch_shutdown"
+    LOG_PATH = mod_root / "prefetch.log"
+    args.refs_dir = REFS_DIR
+
 
 
 def log(msg: str) -> None:
@@ -122,13 +144,15 @@ def generate_one(
     character: str,
     key: str,
     text: str,
+    refs_dir: Path | None = None,
 ) -> bool:
     out_wav = out_dir / character / f"{key}.wav"
     if out_wav.exists():
         pop_priority_key(key, priority_path)
         return False
 
-    ref = REFS_DIR / f"{character}_ref.wav"
+    ref_root = refs_dir or REFS_DIR
+    ref = ref_root / f"{character}_ref.wav"
     if not ref.is_file():
         log(f"[skip] no ref: {ref}")
         return False
@@ -194,7 +218,7 @@ def run_batch(tts, args: argparse.Namespace) -> tuple[int, int]:
         if job is None:
             break
         character, key, text = job
-        if generate_one(tts, args.out_dir, args.priority, character, key, text):
+        if generate_one(tts, args.out_dir, args.priority, character, key, text, args.refs_dir):
             created += 1
         else:
             skipped += 1
@@ -234,7 +258,7 @@ def run_daemon(args: argparse.Namespace) -> None:
                 continue
             idle_loops = 0
             character, key, text = job
-            if generate_one(tts, args.out_dir, args.priority, character, key, text):
+            if generate_one(tts, args.out_dir, args.priority, character, key, text, args.refs_dir):
                 skip_streak = 0
             else:
                 skip_streak += 1
@@ -257,10 +281,13 @@ def main() -> None:
     parser.add_argument("--queue", type=Path, default=DEFAULT_QUEUE)
     parser.add_argument("--priority", type=Path, default=DEFAULT_PRIORITY)
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT)
+    parser.add_argument("--refs-dir", type=Path, default=None)
+    parser.add_argument("--mod-root", type=Path, default=None)
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--daemon", action="store_true", help="Keep model loaded; poll queue")
     parser.add_argument("--idle-exit-sec", type=int, default=300)
     args = parser.parse_args()
+    apply_runtime_paths(args)
 
     if args.daemon:
         run_daemon(args)

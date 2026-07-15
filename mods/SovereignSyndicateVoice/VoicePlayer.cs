@@ -49,6 +49,14 @@ namespace SovereignSyndicateVoice
             return key;
         }
 
+        /// <summary>
+        /// Clears sticky AC key without stopping FMOD playback.
+        /// </summary>
+        internal void ReleaseLoadscreenKey()
+        {
+            ActiveLoadscreenKey = null;
+        }
+
         internal bool HasModWav(string key)
         {
             return !string.IsNullOrEmpty(key) && ResolveWavPath(key, null) != null;

@@ -1,11 +1,15 @@
 """Generate 20-60s Russian voice reference clips via Piper TTS (free, local)."""
 from __future__ import annotations
 
+import argparse
 import subprocess
 import urllib.request
 from pathlib import Path
 
-OUT_DIR = Path(r"C:\Temp\SovereignSyndicateVoice\refs")
+DEFAULT_OUT = Path(
+    r"C:\Program Files (x86)\Steam\steamapps\common\Sovereign Syndicate"
+    r"\Mods\SovereignSyndicateVoice\refs"
+)
 MODEL_DIR = Path(r"C:\Temp\SovereignSyndicateVoice\piper_models")
 BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/ru/ru_RU"
 
@@ -65,12 +69,16 @@ def download_model(voice: str) -> tuple[Path, Path]:
 
 
 def main() -> None:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT)
+    args = parser.parse_args()
+    out_dir: Path = args.out_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     for name, cfg in CHARACTERS.items():
         model, config = download_model(cfg["voice"])
-        out_wav = OUT_DIR / f"{name}_ref.wav"
-        text_file = OUT_DIR / f"{name}_ref.txt"
+        out_wav = out_dir / f"{name}_ref.wav"
+        text_file = out_dir / f"{name}_ref.txt"
         text_file.write_text(cfg["text"], encoding="utf-8")
 
         cmd = [

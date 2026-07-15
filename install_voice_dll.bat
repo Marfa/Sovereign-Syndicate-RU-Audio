@@ -34,9 +34,16 @@ copy /Y "%ROOT%SovereignSyndicateVoice.dll" "%MODS%\SovereignSyndicateVoice.dll"
 if not exist "%VOICE_MOD%\voice\atticus" mkdir "%VOICE_MOD%\voice\atticus"
 if not exist "%VOICE_MOD%\voice\clara" mkdir "%VOICE_MOD%\voice\clara"
 if not exist "%VOICE_MOD%\voice\otto" mkdir "%VOICE_MOD%\voice\otto"
+if not exist "%VOICE_MOD%\scripts" mkdir "%VOICE_MOD%\scripts"
+if not exist "%VOICE_MOD%\refs" mkdir "%VOICE_MOD%\refs"
+if exist "%ROOT%scripts\generate_dialogue_batch.py" (
+  copy /Y "%ROOT%scripts\generate_dialogue_batch.py" "%VOICE_MOD%\scripts\" >nul
+  copy /Y "%ROOT%scripts\xtts_audio.py" "%VOICE_MOD%\scripts\" >nul
+  copy /Y "%ROOT%scripts\prepare_voice_refs_piper.py" "%VOICE_MOD%\scripts\" >nul
+)
 
 echo.
-echo Готово: %MODS%\SovereignSyndicateVoice.dll
-echo Нужен XTTS venv: C:\Temp\SovereignSyndicateVoice\venv
-echo При выходе из игры сгенерированные wav удаляются.
+echo DLL установлен: %MODS%\SovereignSyndicateVoice.dll
+echo Для озвучки на лету один раз запустите install_voice_env.bat
+echo   (venv + refs в %VOICE_MOD%)
 pause

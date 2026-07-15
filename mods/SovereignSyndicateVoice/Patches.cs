@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using HarmonyLib;
 using MelonLoader;
 using PixelCrushers.DialogueSystem;
@@ -41,13 +40,20 @@ namespace SovereignSyndicateVoice
                 return;
             }
 
+            // Consume sticky AC key so it cannot leak into later lines.
             var key = VoiceMod.Player.TakeActiveLoadscreenKey();
             if (string.IsNullOrEmpty(key))
             {
                 key = LoadscreenKeyResolver.FromLineId(lineID, _speaker);
             }
 
-            if (string.IsNullOrEmpty(key) || !VoiceMod.Player.HasModWav(key))
+            // Loadscreen VO intentionally disabled.
+            if (string.IsNullOrEmpty(key) || key.StartsWith("LOADSCREEN_", StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            if (!VoiceMod.Player.HasModWav(key))
             {
                 return;
             }
@@ -79,7 +85,19 @@ namespace SovereignSyndicateVoice
         internal static void Postfix()
         {
             VoicePendingReplay.Cancel();
-            VoiceMod.Player?.StopAllVo();
+            VoiceMod.Player?.ReleaseLoadscreenKey();
+        }
+    }
+
+    /// <summary>
+    /// Fires for every conversation line (including PC), even when UI subtitles are hidden.
+    /// </summary>
+    [HarmonyPatch(typeof(ConversationView), "StartSubtitle")]
+    internal static class ConversationViewStartSubtitlePatch
+    {
+        internal static void Postfix(Subtitle subtitle)
+        {
+            DialogueHooks.OnSubtitle(subtitle, "StartSubtitle");
         }
     }
 
@@ -94,9 +112,10 @@ namespace SovereignSyndicateVoice
 
     internal static class DialogueHooks
     {
-        private static bool _subscribed;
+        private static int _hookedControllerId = int.MinValue;
         private static string _lastHandledKey = string.Empty;
         private static float _lastHandledTime;
+        private static bool _actorsLogged;
 
         internal static void ResetForSceneLoad()
         {
@@ -106,14 +125,28 @@ namespace SovereignSyndicateVoice
 
         internal static bool IsSubscribed
         {
-            get { return _subscribed; }
+            get
+            {
+                if (DialogueManager.instance == null)
+                {
+                    return false;
+                }
+
+                return _hookedControllerId == DialogueManager.instance.GetInstanceID();
+            }
         }
 
         internal static void TrySubscribe()
         {
             DialogueDumper.TryDump();
 
-            if (_subscribed || DialogueManager.instance == null)
+            if (DialogueManager.instance == null)
+            {
+                return;
+            }
+
+            var controllerId = DialogueManager.instance.GetInstanceID();
+            if (_hookedControllerId == controllerId)
             {
                 return;
             }
@@ -129,8 +162,9 @@ namespace SovereignSyndicateVoice
             events.conversationEvents.onConversationStart.AddListener(VoicePrefetch.OnConversationStart);
             events.conversationEvents.onConversationResponseMenu.AddListener(OnResponseMenu);
             events.conversationEvents.onConversationEnd.AddListener(OnConversationEnd);
-            _subscribed = true;
-            MelonLogger.Msg("Dialogue System hooks attached");
+            _hookedControllerId = controllerId;
+            MelonLogger.Msg("Dialogue System hooks attached (controller=" + controllerId + ")");
+            LogActorsOnce();
             DialogueDumper.TryDump();
         }
 
@@ -159,6 +193,12 @@ namespace SovereignSyndicateVoice
 
             VoiceMod.Player.StopLoadscreenVo();
 
+            string rawSpeaker = null;
+            if (subtitle.speakerInfo != null)
+            {
+                rawSpeaker = subtitle.speakerInfo.nameInDatabase ?? subtitle.speakerInfo.Name;
+            }
+
             var character = MapSpeaker(subtitle.speakerInfo) ?? MapSpeakerFromEntry(entry);
             if (character != null)
             {
@@ -170,14 +210,17 @@ namespace SovereignSyndicateVoice
             }
 
             var lineText = subtitle.formattedText != null ? subtitle.formattedText.text : null;
+            var voiceText = VoiceText.ForVoice(entry, lineText);
             MelonLogger.Msg(
-                "VO dialogue [" + source + "]: id=" + entry.id + " title=" + entry.Title + " text=" + (lineText ?? "?") +
-                " speaker=" + (character ?? "?"));
+                "VO dialogue [" + source + "]: id=" + entry.id + " title=" + entry.Title + " text=" + (voiceText ?? "?") +
+                " speaker=" + (character ?? "?") +
+                " actorId=" + entry.ActorID +
+                " raw=" + (rawSpeaker ?? "?"));
 
             var convId = DialogueManager.lastConversationID;
             VoicePendingReplay.OnLineShown(entry.id, convId);
             VoicePrefetch.OnLineShown(entry);
-            VoiceMod.Player.TryPlayDialogueSubtitle(entry, lineText, character, convId);
+            VoiceMod.Player.TryPlayDialogueSubtitle(entry, voiceText, character, convId);
         }
 
         private static void OnResponseMenu(Response[] responses)
@@ -215,7 +258,7 @@ namespace SovereignSyndicateVoice
             var db = DialogueManager.masterDatabase;
             if (db == null)
             {
-                return null;
+                return DialogueLineRules.ResolveCurrentPcCharacter();
             }
 
             foreach (var actor in db.actors)
@@ -225,10 +268,21 @@ namespace SovereignSyndicateVoice
                     continue;
                 }
 
-                return DialogueLineRules.MapActor(actor.Name);
+                var mapped = DialogueLineRules.MapActor(actor.Name);
+                if (mapped != null)
+                {
+                    return mapped;
+                }
+
+                if (DialogueLineRules.IsGenericSpeaker(actor.Name))
+                {
+                    return DialogueLineRules.ResolveCurrentPcCharacter();
+                }
+
+                return null;
             }
 
-            return null;
+            return DialogueLineRules.ResolveCurrentPcCharacter();
         }
 
         private static string MapSpeaker(CharacterInfo speaker)
@@ -239,7 +293,40 @@ namespace SovereignSyndicateVoice
             }
 
             var name = speaker.nameInDatabase ?? speaker.Name ?? string.Empty;
-            return DialogueLineRules.MapActor(name);
+            var mapped = DialogueLineRules.MapActor(name);
+            if (mapped != null)
+            {
+                return mapped;
+            }
+
+            if (DialogueLineRules.IsGenericSpeaker(name))
+            {
+                return DialogueLineRules.ResolveCurrentPcCharacter();
+            }
+
+            return null;
+        }
+
+        private static void LogActorsOnce()
+        {
+            if (_actorsLogged)
+            {
+                return;
+            }
+
+            var db = DialogueManager.masterDatabase;
+            if (db == null || db.actors == null)
+            {
+                return;
+            }
+
+            _actorsLogged = true;
+            foreach (var actor in db.actors)
+            {
+                var mapped = DialogueLineRules.MapActor(actor.Name) ??
+                             (DialogueLineRules.IsGenericSpeaker(actor.Name) ? "pc?" : "-");
+                MelonLogger.Msg("VO actor: id=" + actor.id + " name=" + actor.Name + " -> " + mapped);
+            }
         }
     }
 }

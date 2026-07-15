@@ -9,8 +9,12 @@ namespace SovereignSyndicateVoice
 {
     internal static class DialogueDumper
     {
-        private const string DumpDir = @"C:\Temp\SovereignSyndicateVoice\lines_ru";
         private static bool _done;
+
+        private static string DumpDir
+        {
+            get { return VoicePaths.DumpDir; }
+        }
 
         internal static void TryDump()
         {

@@ -42,6 +42,7 @@ namespace SovereignSyndicateVoice
             _character = character;
             _lineText = lineText;
             _deadline = Time.unscaledTime + 90f;
+            MelonLogger.Msg("VO replay wait: id=" + entry.id + " key=" + DialogueVoiceKeys.Primary(entry, _conversationId));
 
             if (!_running)
             {
@@ -54,6 +55,8 @@ namespace SovereignSyndicateVoice
             _pendingEntryId = -1;
             _entry = null;
             _conversationId = -1;
+            _character = null;
+            _lineText = null;
         }
 
         private static bool IsStillInConversation(int convId)
@@ -69,51 +72,92 @@ namespace SovereignSyndicateVoice
         private static IEnumerator WaitAndReplay()
         {
             _running = true;
-            var waitEntryId = _pendingEntryId;
-            var waitConvId = _conversationId;
-
-            while (Time.unscaledTime < _deadline)
+            try
             {
-                if (_entry == null || _pendingEntryId != waitEntryId)
+                while (true)
                 {
-                    break;
-                }
-
-                if (!IsStillInConversation(waitConvId))
-                {
-                    MelonLogger.Msg("VO replay skip: conversation ended id=" + waitEntryId);
-                    break;
-                }
-
-                if (VoiceMod.Player != null)
-                {
-                    var key = DialogueVoiceKeys.Primary(_entry, waitConvId);
-                    if (!VoiceMod.Player.HasModWav(key))
+                    // Idle until Register sets pending work (or exit after short idle).
+                    if (_pendingEntryId < 0 || _entry == null)
                     {
+                        var idleUntil = Time.unscaledTime + 1.0f;
+                        while ((_pendingEntryId < 0 || _entry == null) && Time.unscaledTime < idleUntil)
+                        {
+                            yield return new WaitForSeconds(0.25f);
+                        }
+
+                        if (_pendingEntryId < 0 || _entry == null)
+                        {
+                            yield break;
+                        }
+                    }
+
+                    var waitEntryId = _pendingEntryId;
+                    var waitConvId = _conversationId;
+                    var entry = _entry;
+                    var character = _character;
+                    var lineText = _lineText;
+                    var deadline = _deadline;
+
+                    var played = false;
+                    while (Time.unscaledTime < deadline)
+                    {
+                        // Newer Register or Cancel superseded this wait target.
+                        if (_pendingEntryId != waitEntryId || _entry == null)
+                        {
+                            break;
+                        }
+
+                        if (!IsStillInConversation(waitConvId))
+                        {
+                            MelonLogger.Msg("VO replay skip: conversation ended id=" + waitEntryId);
+                            if (_pendingEntryId == waitEntryId)
+                            {
+                                Cancel();
+                            }
+
+                            break;
+                        }
+
+                        if (VoiceMod.Player != null)
+                        {
+                            var key = DialogueVoiceKeys.Primary(entry, waitConvId);
+                            if (!VoiceMod.Player.HasModWav(key))
+                            {
+                                yield return new WaitForSeconds(0.25f);
+                                continue;
+                            }
+
+                            if (FmodVoicePlayer.IsPlaying)
+                            {
+                                yield return new WaitForSeconds(0.25f);
+                                continue;
+                            }
+
+                            MelonLogger.Msg("VO replay ready: id=" + waitEntryId + " key=" + key);
+                            VoiceMod.Player.TryPlayDialogueSubtitle(entry, lineText, character, waitConvId);
+                            if (_pendingEntryId == waitEntryId)
+                            {
+                                Cancel();
+                            }
+
+                            played = true;
+                            break;
+                        }
+
                         yield return new WaitForSeconds(0.25f);
-                        continue;
                     }
 
-                    if (_pendingEntryId != waitEntryId || FmodVoicePlayer.IsPlaying)
+                    if (!played && _pendingEntryId == waitEntryId)
                     {
-                        MelonLogger.Msg("VO replay skip: stale id=" + waitEntryId);
-                        break;
+                        MelonLogger.Msg("VO replay timeout: id=" + waitEntryId);
+                        Cancel();
                     }
-
-                    MelonLogger.Msg("VO replay ready: id=" + waitEntryId + " key=" + key);
-                    VoiceMod.Player.TryPlayDialogueSubtitle(_entry, _lineText, _character, waitConvId);
-                    _pendingEntryId = -1;
-                    _entry = null;
-                    break;
                 }
-
-                yield return new WaitForSeconds(0.25f);
             }
-
-            _entry = null;
-            _conversationId = -1;
-            _pendingEntryId = -1;
-            _running = false;
+            finally
+            {
+                _running = false;
+            }
         }
     }
 }

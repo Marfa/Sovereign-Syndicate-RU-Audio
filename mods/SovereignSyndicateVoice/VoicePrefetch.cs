@@ -12,17 +12,14 @@ namespace SovereignSyndicateVoice
 {
     internal static class VoicePrefetch
     {
-        private const string QueuePath = @"C:\Temp\SovereignSyndicateVoice\prefetch_queue.tsv";
-        private const string PriorityPath = @"C:\Temp\SovereignSyndicateVoice\prefetch_priority.tsv";
-        private const string LockPath = @"C:\Temp\SovereignSyndicateVoice\prefetch.lock";
-        private const string LogPath = @"C:\Temp\SovereignSyndicateVoice\prefetch.log";
-        private const string PythonScript = @"C:\Users\HYPERPC\IdeaProjects\Sovereign Syndicate\scripts\generate_dialogue_batch.py";
-        private const string PythonScriptFallback = @"C:\Temp\SovereignSyndicateVoice\generate_dialogue_batch.py";
+        private static string QueuePath { get { return VoicePaths.QueuePath; } }
+        private static string PriorityPath { get { return VoicePaths.PriorityPath; } }
+        private static string LockPath { get { return VoicePaths.LockPath; } }
+        private static string ShutdownPath { get { return VoicePaths.ShutdownPath; } }
         private const int LookaheadLimit = 1;
         private const int BranchPrefetchLimit = 3;
         private const int MenuBranchDepth = 2;
         private const int MaxQueueSize = 12;
-        private const string ShutdownPath = @"C:\Temp\SovereignSyndicateVoice\prefetch_shutdown";
         private const int WorkerIdleExitSec = 90;
         private const float WorkerShutdownDelaySec = 60f;
         private const float ConversationDebounceSec = 0.5f;
@@ -719,11 +716,15 @@ namespace SovereignSyndicateVoice
                 return;
             }
 
-            var python = @"C:\Temp\SovereignSyndicateVoice\venv\Scripts\python.exe";
-            var script = File.Exists(PythonScript) ? PythonScript : PythonScriptFallback;
-            if (!File.Exists(python) || !File.Exists(script))
+            var python = ResolveExistingPath(VoicePaths.PythonCandidates());
+            var script = ResolveExistingPath(VoicePaths.ScriptCandidates());
+            if (python == null || script == null)
             {
-                MelonLogger.Warning("VO prefetch: python/script missing");
+                MelonLogger.Warning(
+                    "VO prefetch: missing " +
+                    (python == null ? "python (" + VoicePaths.VenvPython + ")" : "") +
+                    (python == null && script == null ? "; " : "") +
+                    (script == null ? "script (" + Path.Combine(VoicePaths.ScriptsRoot, "generate_dialogue_batch.py") + ")" : ""));
                 return;
             }
 
@@ -732,14 +733,18 @@ namespace SovereignSyndicateVoice
 
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(LockPath));
+                Directory.CreateDirectory(VoicePaths.ModRoot);
                 File.WriteAllText(LockPath, "starting", Encoding.UTF8);
-                var outDir = VoicePaths.DevVoiceRoot;
+                var outDir = VoicePaths.VoiceRoot;
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = python,
                     Arguments =
-                        "\"" + script + "\" --daemon --queue \"" + QueuePath + "\" --out-dir \"" + outDir +
+                        "\"" + script + "\" --daemon --queue \"" + QueuePath +
+                        "\" --priority \"" + PriorityPath +
+                        "\" --out-dir \"" + outDir +
+                        "\" --refs-dir \"" + VoicePaths.RefsRoot +
+                        "\" --mod-root \"" + VoicePaths.ModRoot +
                         "\" --idle-exit-sec " + WorkerIdleExitSec,
                     UseShellExecute = false,
                     CreateNoWindow = true,
@@ -831,6 +836,19 @@ namespace SovereignSyndicateVoice
             }
 
             return false;
+        }
+
+        private static string ResolveExistingPath(string[] candidates)
+        {
+            foreach (var path in candidates)
+            {
+                if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                {
+                    return path;
+                }
+            }
+
+            return null;
         }
 
         private sealed class PrefetchLine

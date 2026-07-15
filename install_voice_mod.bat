@@ -21,7 +21,7 @@ if not exist "%GAME_DIR%\MelonLoader" (
   exit /b 1
 )
 
-echo [1/2] Сборка SovereignSyndicateVoice...
+echo [1/3] Сборка SovereignSyndicateVoice...
 dotnet build "%ROOT%mods\SovereignSyndicateVoice\SovereignSyndicateVoice.csproj" -c Release /p:GameDir="%GAME_DIR%"
 if errorlevel 1 (
   echo Ошибка сборки
@@ -29,7 +29,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [2/2] Копирование DLL и папок...
+echo [2/3] Копирование DLL и scripts...
 set "MODS=%GAME_DIR%\Mods"
 set "VOICE_MOD=%MODS%\SovereignSyndicateVoice"
 if not exist "%MODS%" mkdir "%MODS%"
@@ -37,9 +37,20 @@ copy /Y "%ROOT%mods\SovereignSyndicateVoice\bin\SovereignSyndicateVoice.dll" "%M
 if not exist "%VOICE_MOD%\voice\atticus" mkdir "%VOICE_MOD%\voice\atticus"
 if not exist "%VOICE_MOD%\voice\clara" mkdir "%VOICE_MOD%\voice\clara"
 if not exist "%VOICE_MOD%\voice\otto" mkdir "%VOICE_MOD%\voice\otto"
+if not exist "%VOICE_MOD%\scripts" mkdir "%VOICE_MOD%\scripts"
+if not exist "%VOICE_MOD%\refs" mkdir "%VOICE_MOD%\refs"
+copy /Y "%ROOT%scripts\generate_dialogue_batch.py" "%VOICE_MOD%\scripts\" >nul
+copy /Y "%ROOT%scripts\xtts_audio.py" "%VOICE_MOD%\scripts\" >nul
+copy /Y "%ROOT%scripts\prepare_voice_refs_piper.py" "%VOICE_MOD%\scripts\" >nul
+
+echo [3/3] XTTS окружение (venv + refs)...
+call "%ROOT%install_voice_env.bat" "%GAME_DIR%"
+if errorlevel 1 (
+  echo Warning: install_voice_env.bat failed — озвучка на лету не заработает, пока не установите venv.
+)
 
 echo.
 echo Готово. DLL: %MODS%\SovereignSyndicateVoice.dll
-echo При выходе из игры сгенерированные wav удаляются автоматически.
-echo XTTS venv: C:\Temp\SovereignSyndicateVoice\venv
+echo Окружение: %VOICE_MOD%  (venv, refs, scripts, voice)
+echo Wav-кэш сохраняется между сессиями.
 pause
