@@ -6,7 +6,7 @@ namespace SovereignSyndicateVoice
 {
     internal static class VoiceCacheCleanup
     {
-        private static readonly string[] Characters = { "atticus", "clara", "otto" };
+        private static readonly string[] Characters = { "atticus", "clara", "teddy", "otto" };
 
         internal static void PurgeSessionWavs(string voiceRoot)
         {

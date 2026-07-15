@@ -1,0 +1,16 @@
+---
+description: Backup game install files to C:\Temp\ before any modification
+alwaysApply: true
+---
+
+# Game file backup before edits
+
+Before changing any file inside the installed game directory (e.g. `C:\Program Files (x86)\Steam\steamapps\common\Sovereign Syndicate\`), always:
+
+1. Create backup under `C:\Temp\SovereignSyndicateBackup\`
+2. Use timestamp in filename: `SyndicateLocalization_YYYYMMDD_HHMMSS.csv` (or matching extension)
+3. Confirm backup path in the response before/after editing
+4. Never edit game files without a fresh backup in the same session
+5. **Also** follow `no-game-update-without-permission.mdc`: no game writes unless the user explicitly allows deploy/update in that turn
+
+Restore from backup if the user asks to roll back.

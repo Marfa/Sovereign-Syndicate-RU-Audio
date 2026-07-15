@@ -3,8 +3,13 @@ from __future__ import annotations
 
 import argparse
 import subprocess
+import sys
 import urllib.request
 from pathlib import Path
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
 
 DEFAULT_OUT = Path(
     r"C:\Program Files (x86)\Steam\steamapps\common\Sovereign Syndicate"
@@ -36,17 +41,27 @@ CHARACTERS = {
             "с лёгкой насмешкой, но без пустой бравады."
         ),
     },
-    "otto": {
+    "teddy": {
         "voice": "denis",
         "text": (
-            "Отто. Автоматон, созданный для службы, но не для молчания. "
-            "Я наблюдаю мир через шестерёнки, масло и точные расчёты, однако внутри меня "
-            "есть вопросы, которые не решаются механикой. Тедди называет меня надёжным, "
-            "а я стараюсь оправдать это слово каждый день. Говорю ровно, чётко, "
-            "с лёгкой металлической сдержанностью, будто каждое слово проверено "
-            "прежде, чем покинуть мои губы."
+            "Тедди Редгрейв. Бывший солдат, ныне — человек, который чинит то, что другие ломают. "
+            "Я знаю цену тишины после выстрела и цену дружбы, когда рядом только шестерёнки и пар. "
+            "Лондон режет без ножа, но я всё ещё здесь: чиню автоматонов, держу слово и "
+            "не отпускаю тех, кто пошёл со мной сквозь дым. Говорю просто, по-мужски, "
+            "без пафоса — будто рассказываю дело товарищу за верстаком."
         ),
-        "length_scale": "1.08",
+    },
+    "otto": {
+        "voice": "ruslan",
+        "text": (
+            "О́о-тто. Автоматон, созданный для службы, но не для молчания. "
+            "Меня зовут О́о-тто. Я наблюдаю мир через шестерёнки, масло и точные расчёты, "
+            "однако внутри меня есть вопросы, которые не решаются механикой. "
+            "Тедди называет меня надёжным, а я стараюсь оправдать это слово каждый день. "
+            "Говорю ровно, чётко, с лёгкой металлической сдержанностью, будто каждое слово "
+            "проверено прежде, чем покинуть мои губы. О́о-тто."
+        ),
+        "length_scale": "1.10",
     },
 }
 
@@ -71,11 +86,20 @@ def download_model(voice: str) -> tuple[Path, Path]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT)
+    parser.add_argument(
+        "--only",
+        nargs="*",
+        default=None,
+        help="Optional character names to regenerate (default: all)",
+    )
     args = parser.parse_args()
     out_dir: Path = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    selected = set(args.only) if args.only else set(CHARACTERS)
     for name, cfg in CHARACTERS.items():
+        if name not in selected:
+            continue
         model, config = download_model(cfg["voice"])
         out_wav = out_dir / f"{name}_ref.wav"
         text_file = out_dir / f"{name}_ref.txt"
@@ -99,7 +123,12 @@ def main() -> None:
             cmd.extend(["--length-scale", length_scale])
 
         subprocess.run(cmd, check=True)
-        print(f"CREATED {out_wav}")
+        from xtts_audio import apply_character_voice_fx
+
+        apply_character_voice_fx(out_wav, name)
+        if name in ("otto", "teddy", "atticus"):
+            print(f"VOICE_FX {name} -> {out_wav}")
+        print(f"CREATED {out_wav} ({cfg['voice']})")
 
 
 if __name__ == "__main__":

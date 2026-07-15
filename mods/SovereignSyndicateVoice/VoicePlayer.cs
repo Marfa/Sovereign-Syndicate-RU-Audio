@@ -17,7 +17,8 @@ namespace SovereignSyndicateVoice
         {
             { "atticus", "_ATT_" },
             { "clara", "_CLA_" },
-            { "otto", "_TED_" },
+            { "teddy", "_TED_" },
+            { "otto", "_OTT_" },
         };
 
         private readonly string _voiceRoot;
@@ -87,6 +88,12 @@ namespace SovereignSyndicateVoice
             if (entry == null || string.IsNullOrEmpty(character))
             {
                 MelonLogger.Msg("VO skip (no speaker): id=" + (entry != null ? entry.id.ToString() : "?"));
+                return;
+            }
+
+            if (VoiceText.IsNonVerbalPause(lineText))
+            {
+                MelonLogger.Msg("VO skip (ellipsis): id=" + entry.id);
                 return;
             }
 
@@ -385,9 +392,14 @@ namespace SovereignSyndicateVoice
                 }
             }
 
-            if (upper.Contains("_OTT_") || upper.Contains("_OTTO_"))
+            if (upper.Contains("_OTT_") || upper.Contains("_OTTO_") || upper.Contains("OTTO"))
             {
                 return "otto";
+            }
+
+            if (upper.Contains("_TED_") || upper.Contains("TEDDY"))
+            {
+                return "teddy";
             }
 
             return null;

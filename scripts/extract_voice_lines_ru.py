@@ -9,7 +9,8 @@ OUT_DIR = Path(r"C:\Temp\SovereignSyndicateVoice\lines_ru")
 CHAR_TAGS = {
     "atticus": ("_ATT_", "ATTICUS", "_AC_"),
     "clara": ("_CLA_", "CLARA", "_CR_"),
-    "otto": ("_OTT_", "_OTTO_", "_TED_", "OTTO", "TEDDY"),
+    "teddy": ("_TED_", "TEDDY"),
+    "otto": ("_OTT_", "_OTTO_", "OTTO"),
 }
 
 SKIP_PREFIXES = (

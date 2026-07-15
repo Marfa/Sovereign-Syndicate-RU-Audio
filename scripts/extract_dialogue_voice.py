@@ -14,7 +14,8 @@ OUT_DIR = Path(r"C:\Temp\SovereignSyndicateVoice\lines_ru")
 ACTOR_TOKENS = {
     "atticus": ("400004", "atticus", "daley", "daily"),
     "clara": ("400011", "clara"),
-    "otto": ("400003", "400012", "otto", "teddy", "ted"),
+    "teddy": ("400012", "teddy", "ted", "redgrave"),
+    "otto": ("400003", "otto"),
 }
 MAX_PAIR_DISTANCE = 80_000
 

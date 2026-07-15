@@ -53,5 +53,28 @@ namespace SovereignSyndicateVoice
 
             return value.Trim();
         }
+
+        /// <summary>
+        /// Beat / pause lines like «...» / "…" — no TTS, no prefetch.
+        /// </summary>
+        internal static bool IsNonVerbalPause(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return true;
+            }
+
+            var value = Sanitize(text);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return true;
+            }
+
+            value = value.Trim('«', '»', '"', '\u201C', '\u201D', '\'', '\u2018', '\u2019').Trim();
+            value = value.Replace("...", string.Empty).Replace("…", string.Empty);
+            value = value.Replace(".", string.Empty).Replace("·", string.Empty).Replace("•", string.Empty);
+            value = Regex.Replace(value, @"\s+", string.Empty);
+            return value.Length == 0;
+        }
     }
 }

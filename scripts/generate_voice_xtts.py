@@ -13,12 +13,12 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
-from xtts_audio import cleanup_wav, normalize_tts_text
+from xtts_audio import apply_character_voice_fx, cleanup_wav, normalize_tts_text
 
 LINES_DIR = Path(r"C:\Temp\SovereignSyndicateVoice\lines_ru")
 REFS_DIR = Path(r"C:\Temp\SovereignSyndicateVoice\refs")
 OUT_ROOT = Path(r"C:\Temp\SovereignSyndicateVoice\voice")
-CHARACTERS = ("atticus", "clara", "otto")
+CHARACTERS = ("atticus", "clara", "teddy", "otto")
 MODEL_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
 INVALID_CHARS = re.compile(r'[<>:"/\\|?*]')
 
@@ -110,6 +110,7 @@ def generate_for_character(
                 split_sentences=False,
             )
             cleanup_wav(out_wav)
+            apply_character_voice_fx(out_wav, character)
             created += 1
             ru_alias = sanitize_key(text)
             if ru_alias and ru_alias != safe_key:

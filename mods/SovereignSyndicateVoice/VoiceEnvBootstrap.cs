@@ -30,7 +30,70 @@ namespace SovereignSyndicateVoice
             VoicePaths.EnsureLayout();
             SyncScripts();
             MigrateLegacyRefs();
+            MigrateTeddyFromSharedOtto();
             LogStatus();
+        }
+
+        /// <summary>
+        /// v0.5.20: Teddy and Otto used to share voice/otto + otto_ref (denis).
+        /// Move Teddy cache/ref aside, leave otto for the new ruslan automaton voice.
+        /// </summary>
+        private static void MigrateTeddyFromSharedOtto()
+        {
+            try
+            {
+                var teddyRef = Path.Combine(VoicePaths.RefsRoot, "teddy_ref.wav");
+                var ottoRef = Path.Combine(VoicePaths.RefsRoot, "otto_ref.wav");
+                if (!File.Exists(teddyRef) && File.Exists(ottoRef))
+                {
+                    File.Copy(ottoRef, teddyRef, overwrite: false);
+                    var ottoTxt = Path.Combine(VoicePaths.RefsRoot, "otto_ref.txt");
+                    var teddyTxt = Path.Combine(VoicePaths.RefsRoot, "teddy_ref.txt");
+                    if (File.Exists(ottoTxt) && !File.Exists(teddyTxt))
+                    {
+                        File.Copy(ottoTxt, teddyTxt, overwrite: false);
+                    }
+
+                    MelonLogger.Msg("VO env: cloned otto_ref → teddy_ref (Teddy keeps denis)");
+                }
+
+                var ottoDir = Path.Combine(VoicePaths.VoiceRoot, "otto");
+                var teddyDir = Path.Combine(VoicePaths.VoiceRoot, "teddy");
+                Directory.CreateDirectory(teddyDir);
+                if (!Directory.Exists(ottoDir))
+                {
+                    return;
+                }
+
+                var ottoWavs = Directory.GetFiles(ottoDir, "*.wav");
+                var teddyWavs = Directory.GetFiles(teddyDir, "*.wav");
+                if (ottoWavs.Length == 0 || teddyWavs.Length > 0)
+                {
+                    return;
+                }
+
+                var moved = 0;
+                foreach (var src in ottoWavs)
+                {
+                    var dest = Path.Combine(teddyDir, Path.GetFileName(src));
+                    if (File.Exists(dest))
+                    {
+                        continue;
+                    }
+
+                    File.Move(src, dest);
+                    moved++;
+                }
+
+                if (moved > 0)
+                {
+                    MelonLogger.Msg("VO env: moved " + moved + " wav(s) otto/ → teddy/ (Teddy cache)");
+                }
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning("VO env: teddy/otto migrate failed — " + ex.Message);
+            }
         }
 
         private static void SyncScripts()
@@ -38,11 +101,6 @@ namespace SovereignSyndicateVoice
             foreach (var file in ScriptFiles)
             {
                 var dest = Path.Combine(VoicePaths.ScriptsRoot, file);
-                if (File.Exists(dest))
-                {
-                    continue;
-                }
-
                 foreach (var sourceDir in ScriptSourceDirs)
                 {
                     var src = Path.Combine(sourceDir, file);
@@ -53,8 +111,15 @@ namespace SovereignSyndicateVoice
 
                     try
                     {
-                        File.Copy(src, dest, overwrite: false);
-                        MelonLogger.Msg("VO env: installed script " + file);
+                        var missing = !File.Exists(dest);
+                        var newer = !missing && File.GetLastWriteTimeUtc(src) > File.GetLastWriteTimeUtc(dest);
+                        if (!missing && !newer)
+                        {
+                            break;
+                        }
+
+                        File.Copy(src, dest, overwrite: true);
+                        MelonLogger.Msg("VO env: " + (missing ? "installed" : "updated") + " script " + file);
                         break;
                     }
                     catch (Exception ex)

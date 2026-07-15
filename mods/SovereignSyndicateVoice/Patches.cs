@@ -181,7 +181,20 @@ namespace SovereignSyndicateVoice
                 return;
             }
 
-            var dedupeKey = entry.id + ":" + (subtitle.formattedText != null ? subtitle.formattedText.text : entry.Title);
+            VoiceMod.Player.StopLoadscreenVo();
+
+            var lineText = subtitle.formattedText != null ? subtitle.formattedText.text : null;
+            var voiceText = VoiceText.ForVoice(entry, lineText);
+
+            // Silence beats («...» / empty) must not cancel pending XTTS replay for the
+            // previous voiced line (e.g. Tarot Fail regenerating the PC question).
+            if (VoiceText.IsNonVerbalPause(voiceText))
+            {
+                MelonLogger.Msg("VO skip (ellipsis): id=" + entry.id + " text=" + (voiceText ?? "?"));
+                return;
+            }
+
+            var dedupeKey = entry.id + ":" + (voiceText ?? (entry.Title ?? string.Empty));
             var now = Time.unscaledTime;
             if (dedupeKey == _lastHandledKey && now - _lastHandledTime < 0.75f)
             {
@@ -190,8 +203,6 @@ namespace SovereignSyndicateVoice
 
             _lastHandledKey = dedupeKey;
             _lastHandledTime = now;
-
-            VoiceMod.Player.StopLoadscreenVo();
 
             string rawSpeaker = null;
             if (subtitle.speakerInfo != null)
@@ -209,8 +220,6 @@ namespace SovereignSyndicateVoice
                 }
             }
 
-            var lineText = subtitle.formattedText != null ? subtitle.formattedText.text : null;
-            var voiceText = VoiceText.ForVoice(entry, lineText);
             MelonLogger.Msg(
                 "VO dialogue [" + source + "]: id=" + entry.id + " title=" + entry.Title + " text=" + (voiceText ?? "?") +
                 " speaker=" + (character ?? "?") +

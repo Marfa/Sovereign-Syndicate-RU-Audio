@@ -1,0 +1,35 @@
+---
+description: Never update installed game files without explicit user permission
+alwaysApply: true
+---
+
+# No game file updates without permission
+
+Do **not** create, modify, delete, or overwrite any files under the installed game directory unless the user explicitly asks to update/deploy/install into the game in that message (or clearly continues an approved deploy).
+
+Typical game path:
+`C:\Program Files (x86)\Steam\steamapps\common\Sovereign Syndicate\`
+
+Includes (non-exhaustive): `Mods\`, `MelonLoader\`, `Sovereign Syndicate_Data\`, localization CSV, DLLs, `venv`, voice wav/refs/scripts inside Mods.
+
+## Allowed without permission
+
+- Edit project/repo sources (e.g. `IdeaProjects\Sovereign-Syndicate-RU-Audio`, workspace copies)
+- Build artifacts **inside the repo** (`bin\`, etc.)
+- Read-only inspection of game files
+
+## When the user says to update the game
+
+1. Follow `.cursor/rules/game-file-backup.mdc` (fresh backup under `C:\Temp\SovereignSyndicateBackup\`)
+2. Deploy only what was requested
+3. Confirm backup path and what was written
+
+## Examples
+
+```
+// ❌ User: "пофикси паузы в озвучке"
+// → fix repo only; do NOT copy DLL/scripts into Mods
+
+// ✅ User: "обнови файлы в игре"
+// → backup, then deploy
+```

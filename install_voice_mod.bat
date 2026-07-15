@@ -36,6 +36,7 @@ if not exist "%MODS%" mkdir "%MODS%"
 copy /Y "%ROOT%mods\SovereignSyndicateVoice\bin\SovereignSyndicateVoice.dll" "%MODS%\SovereignSyndicateVoice.dll" >nul
 if not exist "%VOICE_MOD%\voice\atticus" mkdir "%VOICE_MOD%\voice\atticus"
 if not exist "%VOICE_MOD%\voice\clara" mkdir "%VOICE_MOD%\voice\clara"
+if not exist "%VOICE_MOD%\voice\teddy" mkdir "%VOICE_MOD%\voice\teddy"
 if not exist "%VOICE_MOD%\voice\otto" mkdir "%VOICE_MOD%\voice\otto"
 if not exist "%VOICE_MOD%\scripts" mkdir "%VOICE_MOD%\scripts"
 if not exist "%VOICE_MOD%\refs" mkdir "%VOICE_MOD%\refs"

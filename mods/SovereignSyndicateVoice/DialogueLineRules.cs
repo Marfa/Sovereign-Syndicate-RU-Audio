@@ -43,19 +43,15 @@ namespace SovereignSyndicateVoice
                 return "clara";
             }
 
-            // Teddy Redgrave (TED route player) — voiced via voice/otto/
-            if (low == "ted" || low == "teddy" || low.Contains("teddy") || low.Contains("redgrave"))
+            // Teddy Redgrave (TED route) — voice/teddy/ + teddy_ref
+            if (low == "ted" || low == "teddy" || low.Contains("teddy") || low.Contains("redgrave") ||
+                low.Contains("ted"))
             {
-                return "otto";
+                return "teddy";
             }
 
-            // Automaton companion Otto — never voice
+            // Automaton companion Otto — separate male voice (ruslan ref)
             if (low.Contains("otto"))
-            {
-                return null;
-            }
-
-            if (low.Contains("ted"))
             {
                 return "otto";
             }
@@ -149,7 +145,7 @@ namespace SovereignSyndicateVoice
 
             if (upper.Contains("/ TED") || upper.EndsWith(" TED"))
             {
-                return "otto";
+                return "teddy";
             }
 
             return null;

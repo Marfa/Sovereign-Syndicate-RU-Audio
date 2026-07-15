@@ -117,6 +117,7 @@ namespace SovereignSyndicateVoice
             Directory.CreateDirectory(VoiceRoot);
             Directory.CreateDirectory(Path.Combine(VoiceRoot, "atticus"));
             Directory.CreateDirectory(Path.Combine(VoiceRoot, "clara"));
+            Directory.CreateDirectory(Path.Combine(VoiceRoot, "teddy"));
             Directory.CreateDirectory(Path.Combine(VoiceRoot, "otto"));
             Directory.CreateDirectory(RefsRoot);
             Directory.CreateDirectory(ScriptsRoot);

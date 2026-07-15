@@ -12,7 +12,7 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
-from xtts_audio import cleanup_wav, normalize_tts_text
+from xtts_audio import apply_character_voice_fx, cleanup_wav, normalize_tts_text
 
 REFS_DIR = Path(r"C:\Temp\SovereignSyndicateVoice\refs")  # overridden in apply_runtime_paths
 DEFAULT_QUEUE = Path(
@@ -172,6 +172,7 @@ def generate_one(
         split_sentences=False,
     )
     cleanup_wav(out_wav)
+    apply_character_voice_fx(out_wav, character)
     pop_priority_key(key, priority_path)
     return True
 
@@ -243,6 +244,15 @@ def run_daemon(args: argparse.Namespace) -> None:
     tts = None
     try:
         tts = load_tts()
+        try:
+            from xtts_audio import get_accentor
+
+            if get_accentor() is not None:
+                log("silero-stress accentor ready")
+            else:
+                log("silero-stress not loaded (optional)")
+        except Exception as exc:
+            log(f"silero-stress preload skipped: {exc}")
         idle_loops = 0
         skip_streak = 0
         max_idle = max(1, args.idle_exit_sec * 2)

@@ -24,6 +24,7 @@ if not exist "%GAME_DIR%\Sovereign Syndicate.exe" (
 echo [1/4] Folders + scripts...
 if not exist "%VOICE_MOD%\voice\atticus" mkdir "%VOICE_MOD%\voice\atticus"
 if not exist "%VOICE_MOD%\voice\clara" mkdir "%VOICE_MOD%\voice\clara"
+if not exist "%VOICE_MOD%\voice\teddy" mkdir "%VOICE_MOD%\voice\teddy"
 if not exist "%VOICE_MOD%\voice\otto" mkdir "%VOICE_MOD%\voice\otto"
 if not exist "%SCRIPTS%" mkdir "%SCRIPTS%"
 if not exist "%REFS%" mkdir "%REFS%"
@@ -48,11 +49,15 @@ if exist "%VENV%\Scripts\python.exe" (
   )
 )
 
-echo [3/4] pip install coqui-tts / piper...
+echo [3/4] pip install coqui-tts / silero-stress / piper...
 "%VENV%\Scripts\python.exe" -m pip install -r "%ROOT%requirements-voice.txt" piper-tts
 if errorlevel 1 (
   echo pip failed
   exit /b 1
+)
+"%VENV%\Scripts\python.exe" -c "import silero_stress; print('silero-stress OK')"
+if errorlevel 1 (
+  echo WARNING: silero-stress import failed — ударения перед XTTS будут отключены
 )
 
 echo [4/4] Voice refs ^(Piper^)...

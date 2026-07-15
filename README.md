@@ -1,6 +1,6 @@
 # Sovereign Syndicate RU Audio
 
-**Нейро-озвучка русской локализации Sovereign Syndicate на лету — Atticus, Clara, Teddy через MelonLoader + XTTS.**
+**Нейро-озвучка русской локализации Sovereign Syndicate на лету — Atticus, Clara, Teddy, Otto через MelonLoader + XTTS.**
 
 ## Требования (чистая система)
 
@@ -11,10 +11,12 @@
 | [MelonLoader](https://melonwiki.xyz) (Mono / Open-Beta) | загрузка мода |
 | [Python 3.11](https://www.python.org/downloads/) | XTTS worker (`venv`) |
 | NVIDIA GPU + актуальный драйвер | рекомендуется (CUDA); на CPU очень медленно |
-| Интернет | скачивание coqui-tts, Piper-моделей, XTTS checkpoint при первом запуске |
+| Интернет | скачивание coqui-tts, **silero-stress**, Piper-моделей, XTTS checkpoint при первом запуске |
 | .NET SDK 8+ | **только** если собираете мод из исходников (`install_voice_mod.bat`) |
 
-Озвучиваются только **Atticus**, **Clara** и **Teddy** (папка `voice/otto/`). Автоматон Otto и NPC — нет. Loadscreen не озвучивается.
+Озвучиваются **Atticus**, **Clara**, **Teddy** и автоматон **Otto** (отдельные голоса). NPC — нет. Loadscreen не озвучивается.
+
+Автоударения в русском тексте перед TTS: **[silero-stress](https://github.com/snakers4/silero-stress)** (ставится вместе с `venv`). **StressRNN** в сборку не входит (см. лицензии ниже).
 
 ---
 
@@ -73,9 +75,9 @@ install_voice_mod.bat "D:\SteamLibrary\steamapps\common\Sovereign Syndicate"
 
 - `Mods\SovereignSyndicateVoice.dll`
 - `Mods\SovereignSyndicateVoice\scripts\` (`generate_dialogue_batch.py`, `xtts_audio.py`, `prepare_voice_refs_piper.py`)
-- пустые `Mods\SovereignSyndicateVoice\voice\{atticus,clara,otto}\`
+- пустые `Mods\SovereignSyndicateVoice\voice\{atticus,clara,teddy,otto}\`
 
-### 4. Один раз: XTTS-окружение (`venv` + `refs`)
+### 4. Один раз: XTTS-окружение (`venv` + `refs` + ударения)
 
 Без этого шага мод загрузится, но озвучка на лету не заработает (`VO prefetch: missing python…` / нет refs).
 
@@ -87,8 +89,13 @@ install_voice_env.bat "D:\SteamLibrary\steamapps\common\Sovereign Syndicate"
 Скрипт:
 
 1. Создаёт `Mods\SovereignSyndicateVoice\venv\`
-2. Ставит зависимости из `requirements-voice.txt` (coqui-tts и др.) + `piper-tts`
-3. Генерирует референсы в `Mods\SovereignSyndicateVoice\refs\` (`atticus_ref.wav`, `clara_ref.wav`, `otto_ref.wav`)
+2. Ставит зависимости из `requirements-voice.txt`:
+   - `coqui-tts` (XTTS)
+   - **`silero-stress`** (автоударения в русском тексте перед генерацией)
+   - + отдельно `piper-tts` (референсы голосов)
+3. Генерирует референсы в `Mods\SovereignSyndicateVoice\refs\` (`atticus_ref.wav`, `clara_ref.wav`, `teddy_ref.wav`, `otto_ref.wav`)
+
+Отдельная ручная установка silero не нужна — достаточно `install_voice_env.bat` (или `pip install -r requirements-voice.txt` внутри уже существующего `venv`).
 
 Нужны Python 3.11 в PATH (или `%LocalAppData%\Programs\Python\Python311\python.exe`) и интернет. Первая установка может занять долго.
 
@@ -99,6 +106,9 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 ```
 
 `install_voice_env.bat` создаёт venv с `--system-site-packages`, чтобы подхватить уже установленный torch.
+
+Отключить автообработку текста: `SS_VOICE_STRESS=0`.  
+По умолчанию silero ставит только **ё** (режим `yo`) — полные ударения (`SS_VOICE_STRESS=full`) дают паузы между словами в XTTS. Имена **Отто**, **Сайлас** и **Молли** принудительно с ударением на первый слог (`О́о-тто`, `Са́й-лас`, `Мо́о-лли`).
 
 ### 5. Запуск
 
@@ -112,8 +122,10 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 ### 6. Первая реплика в игре
 
 1. Заговорите с NPC за Atticus / Clara / Teddy.
-2. В логе: `VO miss` → `XTTS warm worker started` → через ~20–60 с `VO replay ready` / `VO play dialogue`.
-3. Wav сохраняются в `Mods\SovereignSyndicateVoice\voice\{персонаж}\` и **не удаляются** при выходе — повтор той же реплики играет сразу.
+2. В логе: `VO miss` → `XTTS warm worker started` → (при успехе) `silero-stress accentor ready` → через ~20–60 с `VO replay ready` / `VO play dialogue`.
+3. Wav сохраняются в `Mods\SovereignSyndicateVoice\voice\{персонаж}\` на время сессии.  
+   При **первом** запуске создаётся `Mods\SovereignSyndicateVoice\settings.ini` с `delete_wav_on_exit=true` (по умолчанию кэш **удаляется** при выходе из игры).  
+   Чтобы хранить wav между сессиями: `delete_wav_on_exit=false` в `settings.ini`, затем перезапуск.
 
 ---
 
@@ -125,12 +137,13 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 | --- | --- | --- |
 | `..\SovereignSyndicateVoice.dll` | installer | сам мод |
 | `scripts\` | git / zip | XTTS worker |
-| `venv\` | `install_voice_env.bat` | Python + Coqui XTTS |
+| `venv\` | `install_voice_env.bat` | Python + Coqui XTTS + **silero-stress** |
 | `refs\` | `install_voice_env.bat` | голоса-референсы |
-| `voice\` | игра (на лету) | кэш wav |
+| `voice\` | игра (на лету) | кэш wav (по умолчанию чистится при выходе — см. `settings.ini`) |
+| `settings.ini` | первый запуск мода | `delete_wav_on_exit` и др. |
 | `prefetch.log` | worker | лог генерации |
 
-`venv` и модели XTTS в git/релиз не входят (слишком большие).
+`venv` и модели XTTS / silero в git/релиз не входят (слишком большие) — ставятся pip’ом при шаге 4.
 
 ---
 
@@ -140,11 +153,15 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 | --- | --- |
 | `Mods\SovereignSyndicateVoice.dll` | файл есть |
 | `Mods\SovereignSyndicateVoice\venv\Scripts\python.exe` | есть |
-| `Mods\SovereignSyndicateVoice\refs\clara_ref.wav` (и atticus/otto) | есть |
+| `Mods\SovereignSyndicateVoice\refs\clara_ref.wav` (и atticus/teddy/otto) | есть |
 | `Mods\SovereignSyndicateVoice\scripts\generate_dialogue_batch.py` | есть |
+| `venv\Scripts\python.exe -c "import silero_stress"` | без ошибки |
 | Лог: `VO prefetch: XTTS warm worker started` | при первом miss |
+| Лог / `prefetch.log`: `silero-stress accentor ready` | worker поднял ударения |
 
-Если worker не стартует — смотрите `Mods\SovereignSyndicateVoice\prefetch.log`.
+Если worker не стартует — смотрите `Mods\SovereignSyndicateVoice\prefetch.log`.  
+Если нет ударений: переустановите зависимости — `install_voice_env.bat` или  
+`Mods\...\venv\Scripts\python.exe -m pip install -r requirements-voice.txt`.
 
 ---
 
@@ -157,23 +174,23 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 | `install_voice_env.bat` | `venv` + `refs` (один раз на машине) |
 | `mods/SovereignSyndicateVoice/` | исходники MelonLoader-мода |
 | `scripts/` | XTTS worker и подготовка refs |
-| `requirements-voice.txt` | pip-зависимости |
+| `requirements-voice.txt` | pip-зависимости (включая `silero-stress`) |
 
 ## Как работает
 
-- Диалоги Dialogue System → русский текст → XTTS → `Mods\...\voice\{персонаж}\c{convId}_e{entryId}.wav`
+- Диалоги Dialogue System → русский текст → **silero-stress** (ударения) → XTTS → `Mods\...\voice\{персонаж}\c{convId}_e{entryId}.wav`
 - Prefetch заранее ставит в очередь соседние реплики ветки / меню
 - Loadscreen не озвучивается
-- NPC и автоматон Otto не озвучиваются
+- NPC не озвучиваются
 
 ## Персонажи
 
 | Персонаж | Папка | Голос |
 | --- | --- | --- |
-| Atticus | `voice/atticus/` | клон по `refs/atticus_ref.wav` |
-| Clara | `voice/clara/` | клон по `refs/clara_ref.wav` |
-| Teddy (TED-маршрут) | `voice/otto/` | клон по `refs/otto_ref.wav` |
-| Otto (автоматон) | — | не озвучивается |
+| Atticus | `voice/atticus/` | dmitri + horse FX (`atticus_ref.wav`) |
+| Clara | `voice/clara/` | клон по `refs/clara_ref.wav` (Piper irina) |
+| Teddy (TED-маршрут) | `voice/teddy/` | denis + gnome FX (`teddy_ref.wav`) |
+| Otto (автоматон) | `voice/otto/` | ruslan + robot FX (`refs/otto_ref.wav`) |
 
 ## Логи и отладка
 
@@ -185,13 +202,30 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 ## Changelog (кратко)
 
+- **v0.5.26** — при выходе удаление сгенерированных wav; настройка `settings.ini` → `delete_wav_on_exit` (по умолчанию `true`, создаётся при первом запуске)  
+- **v0.5.25** — silero-stress: по умолчанию только ё (`SS_VOICE_STRESS=yo`); `full` — ударения (могут дать паузы в XTTS); Отто → О́тто; лицензии third-party в README  
+- **v0.5.24** — ellipsis/паузы не отменяют pending VO replay (Tarot Fail/Passed)  
+- **v0.5.22** — Teddy: голос гнома; Atticus: лошадиный тембр; Otto: робот (как раньше)  
+- **v0.5.21** — голос Otto с робот-эффектом (ring-mod + metallic comb на ref и на каждую реплику)  
+- **v0.5.20** — отдельный мужской голос Otto (Piper ruslan); Teddy → `voice/teddy/` (denis)  
+- **v0.5.19** — снова озвучивается автоматон Otto (общий голос с Teddy в `voice/otto/`)  
 - **v0.5.18** — фикс replay после смены реплики; чистый текст для TTS без HTML субтитров  
 - **v0.5.17** — окружение в `Mods\SovereignSyndicateVoice\` (`venv` / `refs` / `voice` / `scripts`)  
-- **v0.5.13** — автоматон Otto без VO; отмена stale replay; вырезание `*сценических ремарок*`  
+- **v0.5.13** — (временно) автоматон Otto без VO; отмена stale replay; вырезание `*сценических ремарок*`  
 
 ## Лицензия
 
-CC BY-NC-SA 4.0 — см. `LICENSE`.
+Код и ассеты этого репозитория: **CC BY-NC-SA 4.0** — см. `LICENSE`.
+
+### Сторонние компоненты (ударения / TTS)
+
+| Компонент | Используется? | Лицензия | Заметка |
+| --- | --- | --- | --- |
+| [silero-stress](https://github.com/snakers4/silero-stress) (Silero Team) | **Да** — автоударения перед XTTS | **MIT** | Ставится pip’ом в `venv` через `install_voice_env.bat` / `requirements-voice.txt`. Использование и распространение зависимости по MIT допустимы; исходники silero в git этого мода **не вендорятся**. |
+| [StressRNN](https://github.com/dbklim/StressRNN) / [russtress](https://github.com/MashaPo/russtress) | **Нет** в текущей сборке | StressRNN: **Apache-2.0** | Рассматривались как альтернатива; в рантайм не подключены. Apache-2.0 тоже совместим с локальным использованием, но пакет не устанавливается. |
+| Coqui XTTS / Piper и др. | Да | свои лицензии пакетов | Ставятся через pip вместе с `requirements-voice.txt` |
+
+Вывод: **использование silero-stress не нарушает MIT**; отдельная оплата / регистрация не требуются. Достаточно ставить пакет официально через pip и сохранять attribution (этот раздел README). StressRNN в проект не встроен — лицензионных обязательств по нему нет.
 
 ## От автора
 

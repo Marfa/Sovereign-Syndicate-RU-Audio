@@ -5,7 +5,7 @@ using HarmonyLib;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.5.18", "themarfa")]
+[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.5.26", "themarfa")]
 [assembly: MelonGame("Crimson Herring Studios", "Sovereign Syndicate")]
 
 namespace SovereignSyndicateVoice
@@ -22,6 +22,7 @@ namespace SovereignSyndicateVoice
         {
             Instance = this;
             VoiceEnvBootstrap.Run();
+            VoiceSettings.LoadOrCreate();
             Player = new VoicePlayer(VoicePaths.VoiceRoot);
             EnsureAudioHost();
 
@@ -89,9 +90,17 @@ namespace SovereignSyndicateVoice
         public override void OnApplicationQuit()
         {
             VoicePrefetch.ForceShutdown("game exit");
-            // Keep Mods\...\voice cache between sessions (on-the-fly wavs).
-            Player?.Stop();
+            Player?.StopAllVo();
             FmodVoicePlayer.Stop();
+
+            if (VoiceSettings.DeleteWavOnExit)
+            {
+                VoiceCacheCleanup.PurgeSessionWavs(VoicePaths.VoiceRoot);
+            }
+            else
+            {
+                MelonLogger.Msg("VO cleanup skipped (delete_wav_on_exit=false)");
+            }
 
             if (AudioHost != null)
             {

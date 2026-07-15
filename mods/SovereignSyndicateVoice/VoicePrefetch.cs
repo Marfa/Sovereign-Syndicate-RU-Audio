@@ -185,6 +185,11 @@ namespace SovereignSyndicateVoice
                 return;
             }
 
+            if (VoiceText.IsNonVerbalPause(textRu))
+            {
+                return;
+            }
+
             if (VoiceMod.Player.HasModWav(key))
             {
                 return;
@@ -361,7 +366,7 @@ namespace SovereignSyndicateVoice
                 text = entry.DialogueText;
             }
 
-            if (string.IsNullOrEmpty(text) || !ContainsCyrillic(text))
+            if (string.IsNullOrEmpty(text) || !ContainsCyrillic(text) || VoiceText.IsNonVerbalPause(text))
             {
                 return;
             }
