@@ -219,10 +219,10 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 ### Сторонние компоненты (ударения / TTS)
 
-| Компонент | Используется? | Лицензия | Заметка |
-| --- | --- | --- | --- |
-| [silero-stress](https://github.com/snakers4/silero-stress) (Silero Team) | **Да** — автоударения перед XTTS | **MIT** | Ставится pip’ом в `venv` через `install_voice_env.bat` / `requirements-voice.txt`. Использование и распространение зависимости по MIT допустимы; исходники silero в git этого мода **не вендорятся**. |
-| Coqui XTTS / Piper и др. | Да | свои лицензии пакетов | Ставятся через pip вместе с `requirements-voice.txt` |
+| Компонент | Лицензия | Заметка |
+| --- | --- | --- |
+| [silero-stress](https://github.com/snakers4/silero-stress) (Silero Team) | **MIT** | Автоударения перед XTTS. Ставится pip’ом в `venv` через `install_voice_env.bat` / `requirements-voice.txt`. Использование и распространение зависимости по MIT допустимы; исходники silero в git этого мода **не вендорятся**. |
+| Coqui XTTS / Piper и др. | свои лицензии пакетов | Ставятся через pip вместе с `requirements-voice.txt` |
 
 ## От автора
 
