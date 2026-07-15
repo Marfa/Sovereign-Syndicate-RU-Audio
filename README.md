@@ -16,7 +16,7 @@
 
 Озвучиваются **Atticus**, **Clara**, **Teddy** и автоматон **Otto** (отдельные голоса). NPC — нет. Loadscreen не озвучивается.
 
-Автоударения в русском тексте перед TTS: **[silero-stress](https://github.com/snakers4/silero-stress)** (ставится вместе с `venv`). **StressRNN** в сборку не входит (см. лицензии ниже).
+Автоударения в русском тексте перед TTS: **[silero-stress](https://github.com/snakers4/silero-stress)** (ставится вместе с `venv`).
 
 ---
 
@@ -222,10 +222,7 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 | Компонент | Используется? | Лицензия | Заметка |
 | --- | --- | --- | --- |
 | [silero-stress](https://github.com/snakers4/silero-stress) (Silero Team) | **Да** — автоударения перед XTTS | **MIT** | Ставится pip’ом в `venv` через `install_voice_env.bat` / `requirements-voice.txt`. Использование и распространение зависимости по MIT допустимы; исходники silero в git этого мода **не вендорятся**. |
-| [StressRNN](https://github.com/dbklim/StressRNN) / [russtress](https://github.com/MashaPo/russtress) | **Нет** в текущей сборке | StressRNN: **Apache-2.0** | Рассматривались как альтернатива; в рантайм не подключены. Apache-2.0 тоже совместим с локальным использованием, но пакет не устанавливается. |
 | Coqui XTTS / Piper и др. | Да | свои лицензии пакетов | Ставятся через pip вместе с `requirements-voice.txt` |
-
-Вывод: **использование silero-stress не нарушает MIT**; отдельная оплата / регистрация не требуются. Достаточно ставить пакет официально через pip и сохранять attribution (этот раздел README). StressRNN в проект не встроен — лицензионных обязательств по нему нет.
 
 ## От автора
 
