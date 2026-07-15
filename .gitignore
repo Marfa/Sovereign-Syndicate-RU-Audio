@@ -10,3 +10,6 @@ __pycache__/
 venv/
 *.wav
 C:\Temp/
+
+# Cursor IDE (local agent rules — not part of the released mod)
+.cursor/
