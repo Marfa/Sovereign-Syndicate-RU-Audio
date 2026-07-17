@@ -30,6 +30,7 @@ namespace SovereignSyndicateVoice
             VoicePaths.EnsureLayout();
             SyncScripts();
             MigrateLegacyRefs();
+            MigrateLegacyVenv();
             MigrateTeddyFromSharedOtto();
             LogStatus();
         }
@@ -128,6 +129,24 @@ namespace SovereignSyndicateVoice
                     }
                 }
             }
+        }
+
+        private static void MigrateLegacyVenv()
+        {
+            var modsVenv = Path.Combine(VoicePaths.ModRoot, "venv", "Scripts", "python.exe");
+            if (File.Exists(modsVenv))
+            {
+                return;
+            }
+
+            var legacyVenv = Path.Combine(LegacyRoot, "venv", "Scripts", "python.exe");
+            if (!File.Exists(legacyVenv))
+            {
+                return;
+            }
+
+            MelonLogger.Warning(
+                "VO env: venv only in legacy C:\\Temp — run install_voice_env.bat to copy into Mods\\SovereignSyndicateVoice\\venv");
         }
 
         private static void MigrateLegacyRefs()

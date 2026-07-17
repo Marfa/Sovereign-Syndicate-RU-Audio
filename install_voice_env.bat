@@ -30,22 +30,61 @@ copy /Y "%ROOT%scripts\xtts_audio.py" "%SCRIPTS%\" >nul
 copy /Y "%ROOT%scripts\prepare_voice_refs_piper.py" "%SCRIPTS%\" >nul
 if exist "%ROOT%requirements-voice.txt" copy /Y "%ROOT%requirements-voice.txt" "%VOICE_MOD%\" >nul
 
-echo [2/4] Python venv...
+echo [2/4] Python venv in Mods\SovereignSyndicateVoice\venv ...
+set "LEGACY_VENV=C:\Temp\SovereignSyndicateVoice\venv"
+set "MIG_VENV=%VOICE_MOD%\_venv_migrate"
+
+rem Broken junction or empty venv folder
+if exist "%VENV%" if not exist "%VENV%\Scripts\python.exe" rmdir "%VENV%" 2>nul
+
+rem Junction at Mods\venv -> copy into real Mods folder (no C:\Temp dependency)
 if exist "%VENV%\Scripts\python.exe" (
-  echo venv already exists: %VENV%
-) else (
-  if exist "C:\Temp\SovereignSyndicateVoice\venv\Scripts\python.exe" (
-    echo Linking legacy Temp venv...
-    mklink /J "%VENV%" "C:\Temp\SovereignSyndicateVoice\venv"
-    if errorlevel 1 (
-      echo Junction failed — creating new venv in Mods ^(needs write access^)...
-      "%PY_SYS%" -m venv --system-site-packages "%VENV%"
-    )
-  ) else (
-    "%PY_SYS%" -m venv --system-site-packages "%VENV%"
-  )
+  fsutil reparsepoint query "%VENV%" >nul 2>&1
+  if not errorlevel 1 goto :migrate_junction_venv
+  goto :venv_ready
 )
 
+rem Legacy install kept venv only under C:\Temp
+if exist "%LEGACY_VENV%\Scripts\python.exe" goto :migrate_legacy_venv
+
+echo Creating venv in Mods...
+"%PY_SYS%" -m venv --system-site-packages "%VENV%"
+if errorlevel 1 (
+  echo venv creation failed - run as Administrator if game is under Program Files
+  exit /b 1
+)
+goto :venv_ready
+
+:migrate_junction_venv
+echo Migrating junction venv to real Mods folder...
+if exist "%MIG_VENV%" rmdir /s /q "%MIG_VENV%"
+robocopy "%VENV%" "%MIG_VENV%" /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS >nul
+if errorlevel 8 (
+  echo robocopy failed during venv migration
+  exit /b 1
+)
+rmdir "%VENV%"
+move "%MIG_VENV%" "%VENV%" >nul
+echo venv migrated from junction to %VENV%
+goto :venv_ready
+
+:migrate_legacy_venv
+echo Migrating legacy C:\Temp venv to Mods...
+if exist "%VENV%" rmdir "%VENV%" 2>nul
+robocopy "%LEGACY_VENV%" "%VENV%" /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS >nul
+if errorlevel 8 (
+  echo robocopy failed during legacy venv migration
+  exit /b 1
+)
+echo venv migrated from %LEGACY_VENV% to %VENV%
+goto :venv_ready
+
+:venv_ready
+if not exist "%VENV%\Scripts\python.exe" (
+  echo venv missing after setup: %VENV%
+  exit /b 1
+)
+echo venv OK: %VENV%
 echo [3/4] pip install coqui-tts / silero-stress / piper...
 "%VENV%\Scripts\python.exe" -m pip install -r "%ROOT%requirements-voice.txt" piper-tts
 if errorlevel 1 (

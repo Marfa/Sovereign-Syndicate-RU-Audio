@@ -22,7 +22,9 @@ $modVoice = "$env:LOCALAPPDATA\..\LocalLow\Artificial Agony\Sovereign Syndicate\
 # или путь из MelonLoader ModsDirectory — см. лог при старте
 ```
 
-Проще для пилота: скопировать wav в `C:\Temp\SovereignSyndicateVoice\voice\` — мод подхватит dev-папку, если Mods-папка пуста.
+Производственный путь: `Mods\SovereignSyndicateVoice\voice\{atticus,clara,teddy,otto}\` (см. корневой README и `install_voice_env.bat`).
+
+`C:\Temp\SovereignSyndicateVoice\` — только legacy fallback для refs/venv в старых установках.
 
 Структура:
 

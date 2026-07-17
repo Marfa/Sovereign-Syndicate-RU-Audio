@@ -38,7 +38,7 @@ MelonLoader-мод + Python XTTS worker. Стек: **C# (.NET 4.7.2)**, **Python
 
 См. `.cursor/rules/no-game-update-without-permission.mdc` — без явного запроса пользователя **не** писать в `C:\Program Files (x86)\Steam\steamapps\common\Sovereign Syndicate\`.
 
-Сборка и установка: `install_voice_mod.bat`, окружение: `install_voice_env.bat`.
+Сборка и установка: `install_voice_mod.bat`, окружение: `install_voice_env.bat` (venv **только** в `Mods\SovereignSyndicateVoice\venv\`, не junction на `C:\Temp`).
 
 ## Security review
 
@@ -51,4 +51,4 @@ MelonLoader-мод + Python XTTS worker. Стек: **C# (.NET 4.7.2)**, **Python
 | `mods/SovereignSyndicateVoice/` | C# MelonLoader mod |
 | `scripts/` | XTTS worker (Python) |
 | `requirements-voice.txt` | pip-зависимости venv |
-| `install_voice_*.bat` | сборка / DLL / venv |
+| `install_voice_*.bat` | сборка / DLL / venv в `Mods\SovereignSyndicateVoice\venv\` |

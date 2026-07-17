@@ -88,12 +88,18 @@ install_voice_env.bat "D:\SteamLibrary\steamapps\common\Sovereign Syndicate"
 
 Скрипт:
 
-1. Создаёт `Mods\SovereignSyndicateVoice\venv\`
+1. Создаёт **`Mods\SovereignSyndicateVoice\venv\`** — физическая папка в каталоге мода (не junction и не `C:\Temp`)
 2. Ставит зависимости из `requirements-voice.txt`:
    - `coqui-tts` (XTTS)
    - **`silero-stress`** (автоударения в русском тексте перед генерацией)
    - + отдельно `piper-tts` (референсы голосов)
 3. Генерирует референсы в `Mods\SovereignSyndicateVoice\refs\` (`atticus_ref.wav`, `clara_ref.wav`, `teddy_ref.wav`, `otto_ref.wav`)
+
+**Где лежит venv:** только `Mods\SovereignSyndicateVoice\venv\`. Это обязательная часть установки — весь XTTS worker и pip-зависимости должны быть рядом с модом, чтобы переустановка игры/бэкап Mods не теряли окружение.
+
+**Обновление со старых сборок:** если venv был junction на `C:\Temp\SovereignSyndicateVoice\venv` или только в `C:\Temp`, повторный запуск `install_voice_env.bat` **копирует** его в `Mods\...\venv\` и убирает junction. `C:\Temp` после миграции можно удалить вручную.
+
+Если игра в `Program Files (x86)` и venv не создаётся — запустите `install_voice_env.bat` **от имени администратора** (нужна запись в `Mods\`).
 
 Отдельная ручная установка silero не нужна — достаточно `install_voice_env.bat` (или `pip install -r requirements-voice.txt` внутри уже существующего `venv`).
 
@@ -137,7 +143,7 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 | --- | --- | --- |
 | `..\SovereignSyndicateVoice.dll` | installer | сам мод |
 | `scripts\` | git / zip | XTTS worker |
-| `venv\` | `install_voice_env.bat` | Python + Coqui XTTS + **silero-stress** |
+| `venv\` | `install_voice_env.bat` | Python + Coqui XTTS + **silero-stress** (реальная папка в Mods, не `C:\Temp`) |
 | `refs\` | `install_voice_env.bat` | голоса-референсы |
 | `voice\` | игра (на лету) | кэш wav (по умолчанию чистится при выходе — см. `settings.ini`) |
 | `settings.ini` | первый запуск мода | `delete_wav_on_exit` и др. |
@@ -152,7 +158,7 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 | Проверка | Ожидание |
 | --- | --- |
 | `Mods\SovereignSyndicateVoice.dll` | файл есть |
-| `Mods\SovereignSyndicateVoice\venv\Scripts\python.exe` | есть |
+| `Mods\SovereignSyndicateVoice\venv\Scripts\python.exe` | есть (не junction на `C:\Temp`) |
 | `Mods\SovereignSyndicateVoice\refs\clara_ref.wav` (и atticus/teddy/otto) | есть |
 | `Mods\SovereignSyndicateVoice\scripts\generate_dialogue_batch.py` | есть |
 | `venv\Scripts\python.exe -c "import silero_stress"` | без ошибки |
@@ -202,7 +208,8 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 ## Changelog (кратко)
 
-- **v0.5.27** — security: `transformers>=5.3.0` (закрыты CVE в HuggingFace Transformers); CI pip-audit + gitleaks; `scripts/check_security.ps1`
+- **v0.5.28** — venv всегда в `Mods\SovereignSyndicateVoice\venv\` (без junction на `C:\Temp`); миграция legacy Temp/junction в `install_voice_env.bat`; README и предупреждение в моде
+- **v0.5.27** — security: `transformers>=5.3.0` (закрыты CVE в HuggingFace Transformers); `scripts/check_security.ps1`, `AGENTS.md`, pre-commit gitleaks; pip-audit в `install_voice_env.bat`; fix bat для путей с `(x86)`
 - **v0.5.26** — при выходе удаление сгенерированных wav; настройка `settings.ini` → `delete_wav_on_exit` (по умолчанию `true`, создаётся при первом запуске)  
 - **v0.5.25** — silero-stress: по умолчанию только ё (`SS_VOICE_STRESS=yo`); `full` — ударения (могут дать паузы в XTTS); Отто → О́тто; лицензии third-party в README  
 - **v0.5.24** — ellipsis/паузы не отменяют pending VO replay (Tarot Fail/Passed)  

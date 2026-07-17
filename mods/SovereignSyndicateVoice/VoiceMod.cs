@@ -5,7 +5,7 @@ using HarmonyLib;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.5.27", "themarfa")]
+[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.5.28", "themarfa")]
 [assembly: MelonGame("Crimson Herring Studios", "Sovereign Syndicate")]
 
 namespace SovereignSyndicateVoice
