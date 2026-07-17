@@ -38,59 +38,55 @@ rem Broken junction or empty venv folder
 if exist "%VENV%" if not exist "%VENV%\Scripts\python.exe" rmdir "%VENV%" 2>nul
 
 rem Junction at Mods\venv -> copy into real Mods folder (no C:\Temp dependency)
-if exist "%VENV%\Scripts\python.exe" (
-  fsutil reparsepoint query "%VENV%" >nul 2>&1
-  if not errorlevel 1 goto :migrate_junction_venv
-  goto :venv_ready
-)
+if not exist "%VENV%\Scripts\python.exe" goto :check_legacy_venv
+fsutil reparsepoint query "%VENV%" >nul 2>&1
+if not errorlevel 1 goto :migrate_junction_venv
+goto :venv_ready
 
-rem Legacy install kept venv only under C:\Temp
+:check_legacy_venv
 if exist "%LEGACY_VENV%\Scripts\python.exe" goto :migrate_legacy_venv
 
 echo Creating venv in Mods...
 "%PY_SYS%" -m venv --system-site-packages "%VENV%"
-if errorlevel 1 (
-  echo venv creation failed - run as Administrator if game is under Program Files
-  exit /b 1
-)
+if errorlevel 1 goto :venv_create_failed
 goto :venv_ready
+
+:venv_create_failed
+echo venv creation failed - run as Administrator if game is under Program Files
+exit /b 1
 
 :migrate_junction_venv
 echo Migrating junction venv to real Mods folder...
 if exist "%MIG_VENV%" rmdir /s /q "%MIG_VENV%"
 robocopy "%VENV%" "%MIG_VENV%" /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS >nul
-if errorlevel 8 (
-  echo robocopy failed during venv migration
-  exit /b 1
-)
+if errorlevel 8 goto :robocopy_junction_failed
 rmdir "%VENV%"
 move "%MIG_VENV%" "%VENV%" >nul
 echo venv migrated from junction to %VENV%
 goto :venv_ready
 
+:robocopy_junction_failed
+echo robocopy failed during venv migration
+exit /b 1
+
 :migrate_legacy_venv
 echo Migrating legacy C:\Temp venv to Mods...
 if exist "%VENV%" rmdir "%VENV%" 2>nul
 robocopy "%LEGACY_VENV%" "%VENV%" /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS >nul
-if errorlevel 8 (
-  echo robocopy failed during legacy venv migration
-  exit /b 1
-)
+if errorlevel 8 goto :robocopy_legacy_failed
 echo venv migrated from %LEGACY_VENV% to %VENV%
 goto :venv_ready
 
+:robocopy_legacy_failed
+echo robocopy failed during legacy venv migration
+exit /b 1
+
 :venv_ready
-if not exist "%VENV%\Scripts\python.exe" (
-  echo venv missing after setup: %VENV%
-  exit /b 1
-)
+if not exist "%VENV%\Scripts\python.exe" goto :venv_missing
 echo venv OK: %VENV%
 echo [3/4] pip install coqui-tts / silero-stress / piper...
 "%VENV%\Scripts\python.exe" -m pip install -r "%ROOT%requirements-voice.txt" piper-tts
-if errorlevel 1 (
-  echo pip failed
-  exit /b 1
-)
+if errorlevel 1 goto :pip_failed
 
 echo [3b/4] pip-audit (dependency vulnerabilities)...
 "%VENV%\Scripts\python.exe" -m pip install -q pip-audit
@@ -100,15 +96,12 @@ if errorlevel 1 (
 )
 "%VENV%\Scripts\python.exe" -c "import silero_stress; print('silero-stress OK')"
 if errorlevel 1 (
-  echo WARNING: silero-stress import failed — ударения перед XTTS будут отключены
+  echo WARNING: silero-stress import failed - stress marks disabled before XTTS
 )
 
 echo [4/4] Voice refs ^(Piper^)...
 "%VENV%\Scripts\python.exe" "%SCRIPTS%\prepare_voice_refs_piper.py" --out-dir "%REFS%"
-if errorlevel 1 (
-  echo refs failed
-  exit /b 1
-)
+if errorlevel 1 goto :refs_failed
 
 echo.
 echo Ready.
@@ -117,6 +110,18 @@ echo   venv:     %VENV%
 echo   refs:     %REFS%
 echo   scripts:  %SCRIPTS%
 exit /b 0
+
+:venv_missing
+echo venv missing after setup: %VENV%
+exit /b 1
+
+:pip_failed
+echo pip failed
+exit /b 1
+
+:refs_failed
+echo refs failed
+exit /b 1
 
 :game_missing
 echo Game not found: %GAME_DIR%
