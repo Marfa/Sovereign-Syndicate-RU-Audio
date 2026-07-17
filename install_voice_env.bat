@@ -16,10 +16,7 @@ set "REFS=%VOICE_MOD%\refs"
 set "PY_SYS=%LocalAppData%\Programs\Python\Python311\python.exe"
 if not exist "%PY_SYS%" set "PY_SYS=python"
 
-if not exist "%GAME_DIR%\Sovereign Syndicate.exe" (
-  echo Game not found: %GAME_DIR%
-  exit /b 1
-)
+if not exist "%GAME_DIR%\Sovereign Syndicate.exe" goto :game_missing
 
 echo [1/4] Folders + scripts...
 if not exist "%VOICE_MOD%\voice\atticus" mkdir "%VOICE_MOD%\voice\atticus"
@@ -60,7 +57,7 @@ echo [3b/4] pip-audit (dependency vulnerabilities)...
 "%VENV%\Scripts\python.exe" -m pip install -q pip-audit
 "%VENV%\Scripts\python.exe" -m pip_audit -r "%ROOT%requirements-voice.txt"
 if errorlevel 1 (
-  echo WARNING: pip-audit reported vulnerabilities — see AGENTS.md / scripts\check_security.ps1
+  echo WARNING: pip-audit reported vulnerabilities - see AGENTS.md / scripts\check_security.ps1
 )
 "%VENV%\Scripts\python.exe" -c "import silero_stress; print('silero-stress OK')"
 if errorlevel 1 (
@@ -81,3 +78,7 @@ echo   venv:     %VENV%
 echo   refs:     %REFS%
 echo   scripts:  %SCRIPTS%
 exit /b 0
+
+:game_missing
+echo Game not found: %GAME_DIR%
+exit /b 1
