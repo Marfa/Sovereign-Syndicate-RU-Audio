@@ -88,7 +88,7 @@ install_voice_env.bat "D:\SteamLibrary\steamapps\common\Sovereign Syndicate"
 
 Скрипт:
 
-1. Создаёт **`Mods\SovereignSyndicateVoice\venv\`** — физическая папка в каталоге мода (не junction и не `C:\Temp`)
+1. Создаёт `Mods\SovereignSyndicateVoice\venv\`
 2. Ставит зависимости из `requirements-voice.txt`:
    - `coqui-tts` (XTTS)
    - **`silero-stress`** (автоударения в русском тексте перед генерацией)
@@ -96,8 +96,6 @@ install_voice_env.bat "D:\SteamLibrary\steamapps\common\Sovereign Syndicate"
 3. Генерирует референсы в `Mods\SovereignSyndicateVoice\refs\` (`atticus_ref.wav`, `clara_ref.wav`, `teddy_ref.wav`, `otto_ref.wav`)
 
 **Где лежит venv:** только `Mods\SovereignSyndicateVoice\venv\`. Это обязательная часть установки — весь XTTS worker и pip-зависимости должны быть рядом с модом, чтобы переустановка игры/бэкап Mods не теряли окружение.
-
-**Обновление со старых сборок:** если venv был junction на `C:\Temp\SovereignSyndicateVoice\venv` или только в `C:\Temp`, повторный запуск `install_voice_env.bat` **копирует** его в `Mods\...\venv\` и убирает junction. `C:\Temp` после миграции можно удалить вручную.
 
 Если игра в `Program Files (x86)` и venv не создаётся — запустите `install_voice_env.bat` **от имени администратора** (нужна запись в `Mods\`).
 
