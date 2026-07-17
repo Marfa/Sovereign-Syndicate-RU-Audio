@@ -208,8 +208,9 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 ## Changelog (кратко)
 
+- **v0.5.29** — fix: `transformers` снова `>=4.57,<5` (coqui-tts несовместим с 5.x → worker падал на импорте); ошибки загрузки XTTS пишутся в `prefetch.log`
 - **v0.5.28** — venv всегда в `Mods\SovereignSyndicateVoice\venv\` (без junction на `C:\Temp`); миграция legacy Temp/junction в `install_voice_env.bat`; README и предупреждение в моде
-- **v0.5.27** — security: `transformers>=5.3.0` (закрыты CVE в HuggingFace Transformers); `scripts/check_security.ps1`, `AGENTS.md`, pre-commit gitleaks; pip-audit в `install_voice_env.bat`; fix bat для путей с `(x86)`
+- **v0.5.27** — security tooling: `scripts/check_security.ps1`, `AGENTS.md`, pre-commit gitleaks; pip-audit в `install_voice_env.bat`; fix bat для путей с `(x86)` (попытка bump transformers 5.x откачена в 0.5.29)
 - **v0.5.26** — при выходе удаление сгенерированных wav; настройка `settings.ini` → `delete_wav_on_exit` (по умолчанию `true`, создаётся при первом запуске)  
 - **v0.5.25** — silero-stress: по умолчанию только ё (`SS_VOICE_STRESS=yo`); `full` — ударения (могут дать паузы в XTTS); Отто → О́тто; лицензии third-party в README  
 - **v0.5.24** — ellipsis/паузы не отменяют pending VO replay (Tarot Fail/Passed)  

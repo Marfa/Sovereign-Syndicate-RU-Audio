@@ -243,7 +243,11 @@ def run_daemon(args: argparse.Namespace) -> None:
     log("XTTS warm worker started")
     tts = None
     try:
-        tts = load_tts()
+        try:
+            tts = load_tts()
+        except Exception as exc:
+            log(f"XTTS load failed: {exc}")
+            raise
         try:
             from xtts_audio import get_accentor
 
@@ -278,6 +282,9 @@ def run_daemon(args: argparse.Namespace) -> None:
                 log("XTTS worker shutdown requested")
                 break
         log("XTTS worker exit")
+    except Exception as exc:
+        log(f"XTTS worker crashed: {exc}")
+        raise
     finally:
         if tts is not None:
             unload_tts(tts)

@@ -14,7 +14,7 @@ MelonLoader-мод + Python XTTS worker. Стек: **C# (.NET 4.7.2)**, **Python
    python -m pip index versions <package>
    ```
 3. **Обновление зависимостей** — сначала `pip-audit`, затем smoke-тест XTTS (`install_voice_env.bat` + реплика в игре).
-4. **`transformers`** — `>=5.3.0` (CVE-2026-4372 и др.); после изменения прогнать `pip-audit` и smoke-тест XTTS.
+4. **`transformers`** — только `>=4.57,<5`. Coqui XTTS 0.27 ломается на transformers 5.x (`isin_mps_friendly`). Не поднимать до 5.x без проверки `import TTS`. Advisories 4.x на Trainer/Hub — вне нашего пути (локальный XTTS).
 
 ### Локальная проверка
 
