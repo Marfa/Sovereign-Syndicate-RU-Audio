@@ -55,6 +55,13 @@ if errorlevel 1 (
   echo pip failed
   exit /b 1
 )
+
+echo [3b/4] pip-audit (dependency vulnerabilities)...
+"%VENV%\Scripts\python.exe" -m pip install -q pip-audit
+"%VENV%\Scripts\python.exe" -m pip_audit -r "%ROOT%requirements-voice.txt"
+if errorlevel 1 (
+  echo WARNING: pip-audit reported vulnerabilities — see AGENTS.md / scripts\check_security.ps1
+)
 "%VENV%\Scripts\python.exe" -c "import silero_stress; print('silero-stress OK')"
 if errorlevel 1 (
   echo WARNING: silero-stress import failed — ударения перед XTTS будут отключены

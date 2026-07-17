@@ -202,6 +202,7 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 ## Changelog (кратко)
 
+- **v0.5.27** — security: `transformers>=5.3.0` (закрыты CVE в HuggingFace Transformers); CI pip-audit + gitleaks; `scripts/check_security.ps1`
 - **v0.5.26** — при выходе удаление сгенерированных wav; настройка `settings.ini` → `delete_wav_on_exit` (по умолчанию `true`, создаётся при первом запуске)  
 - **v0.5.25** — silero-stress: по умолчанию только ё (`SS_VOICE_STRESS=yo`); `full` — ударения (могут дать паузы в XTTS); Отто → О́тто; лицензии third-party в README  
 - **v0.5.24** — ellipsis/паузы не отменяют pending VO replay (Tarot Fail/Passed)  
