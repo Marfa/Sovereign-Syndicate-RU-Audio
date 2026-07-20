@@ -31,9 +31,9 @@ namespace SovereignSyndicateVoice
 
             var low = name.Trim().ToLowerInvariant();
 
-            // Route short codes used in conversation titles / actor names
-            if (low == "att" || low == "atticus" || low.Contains("atticus") ||
-                low.Contains("daley") || low.Contains("daily"))
+            // Atticus only — do NOT match other Daleys (e.g. Matilda Daley).
+            if (low == "att" || low == "atticus" || low == "daley" || low == "daily" ||
+                low.Contains("atticus"))
             {
                 return "atticus";
             }
@@ -44,14 +44,13 @@ namespace SovereignSyndicateVoice
             }
 
             // Teddy Redgrave (TED route) — voice/teddy/ + teddy_ref
-            if (low == "ted" || low == "teddy" || low.Contains("teddy") || low.Contains("redgrave") ||
-                low.Contains("ted"))
+            if (low == "ted" || low == "teddy" || low.Contains("teddy") || low.Contains("redgrave"))
             {
                 return "teddy";
             }
 
             // Automaton companion Otto — separate male voice (ruslan ref)
-            if (low.Contains("otto"))
+            if (low == "otto" || low.Contains("otto"))
             {
                 return "otto";
             }

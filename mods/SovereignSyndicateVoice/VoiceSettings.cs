@@ -75,8 +75,9 @@ namespace SovereignSyndicateVoice
             sb.AppendLine("# Sovereign Syndicate Voice — settings (created on first launch)");
             sb.AppendLine("# Edit this file, then restart the game.");
             sb.AppendLine("#");
-            sb.AppendLine("# delete_wav_on_exit=true  — remove Mods/.../voice/{character}/*.wav when the game exits");
-            sb.AppendLine("# delete_wav_on_exit=false — keep generated wav cache between sessions");
+            sb.AppendLine("# delete_wav_on_exit=true  — remove C:\\Temp\\SovereignSyndicateVoice\\voice on exit");
+            sb.AppendLine("# delete_wav_on_exit=false — keep generated wav cache between sessions (default cache path)");
+            sb.AppendLine("# Mods/.../voice is always cleared on exit (legacy/session folder only)");
             sb.AppendLine("delete_wav_on_exit=true");
             File.WriteAllText(path, sb.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         }

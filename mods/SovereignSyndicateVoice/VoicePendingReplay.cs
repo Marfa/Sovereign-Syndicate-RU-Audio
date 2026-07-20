@@ -134,14 +134,20 @@ namespace SovereignSyndicateVoice
                             }
 
                             MelonLogger.Msg("VO replay ready: id=" + waitEntryId + " key=" + key);
-                            VoiceMod.Player.TryPlayDialogueSubtitle(entry, lineText, character, waitConvId);
-                            if (_pendingEntryId == waitEntryId)
+                            if (VoiceMod.Player.TryPlayDialogueSubtitle(entry, lineText, character, waitConvId))
                             {
-                                Cancel();
+                                if (_pendingEntryId == waitEntryId)
+                                {
+                                    Cancel();
+                                }
+
+                                played = true;
+                                break;
                             }
 
-                            played = true;
-                            break;
+                            MelonLogger.Msg("VO replay retry: play failed id=" + waitEntryId);
+                            yield return new WaitForSeconds(0.25f);
+                            continue;
                         }
 
                         yield return new WaitForSeconds(0.25f);

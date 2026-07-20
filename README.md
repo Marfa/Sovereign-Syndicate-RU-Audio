@@ -127,23 +127,24 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 1. Заговорите с NPC за Atticus / Clara / Teddy.
 2. В логе: `VO miss` → `XTTS warm worker started` → (при успехе) `silero-stress accentor ready` → через ~20–60 с `VO replay ready` / `VO play dialogue`.
-3. Wav сохраняются в `Mods\SovereignSyndicateVoice\voice\{персонаж}\` на время сессии.  
-   При **первом** запуске создаётся `Mods\SovereignSyndicateVoice\settings.ini` с `delete_wav_on_exit=true` (по умолчанию кэш **удаляется** при выходе из игры).  
+3. Wav сохраняются в `C:\Temp\SovereignSyndicateVoice\voice\{персонаж}\` (вне Program Files — без проблем с правами записи).
+   При **первом** запуске создаётся `Mods\SovereignSyndicateVoice\settings.ini` с `delete_wav_on_exit=true` (по умолчанию кэш **удаляется** при выходе из игры).
    Чтобы хранить wav между сессиями: `delete_wav_on_exit=false` в `settings.ini`, затем перезапуск.
+   Старый кэш из `Mods\...\voice\` при старте переносится в `C:\Temp\...`.
 
 ---
 
 ## Структура после установки
 
-Всё рабочее — под `Mods\SovereignSyndicateVoice\`:
+Мод и окружение — под `Mods\SovereignSyndicateVoice\`; кэш wav — в `C:\Temp\SovereignSyndicateVoice\voice\`:
 
 | Путь | Откуда | Назначение |
 | --- | --- | --- |
 | `..\SovereignSyndicateVoice.dll` | installer | сам мод |
 | `scripts\` | git / zip | XTTS worker |
-| `venv\` | `install_voice_env.bat` | Python + Coqui XTTS + **silero-stress** (реальная папка в Mods, не `C:\Temp`) |
+| `venv\` | `install_voice_env.bat` | Python + Coqui XTTS + **silero-stress** (реальная папка в Mods) |
 | `refs\` | `install_voice_env.bat` | голоса-референсы |
-| `voice\` | игра (на лету) | кэш wav (по умолчанию чистится при выходе — см. `settings.ini`) |
+| `C:\Temp\SovereignSyndicateVoice\voice\` | игра (на лету) | кэш wav (по умолчанию чистится при выходе — см. `settings.ini`) |
 | `settings.ini` | первый запуск мода | `delete_wav_on_exit` и др. |
 | `prefetch.log` | worker | лог генерации |
 
@@ -182,7 +183,7 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 ## Как работает
 
-- Диалоги Dialogue System → русский текст → **silero-stress** (ударения) → XTTS → `Mods\...\voice\{персонаж}\c{convId}_e{entryId}.wav`
+- Диалоги Dialogue System → русский текст → **silero-stress** (ударения) → XTTS → `C:\Temp\SovereignSyndicateVoice\voice\{персонаж}\c{convId}_e{entryId}.wav`
 - Prefetch заранее ставит в очередь соседние реплики ветки / меню
 - Loadscreen не озвучивается
 - NPC не озвучиваются
@@ -206,6 +207,7 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 ## Changelog (кратко)
 
+- **v0.5.31** — кэш wav в `C:\Temp\SovereignSyndicateVoice\voice\` (атомарная запись `.wav.part`); фикс гонки FMOD `ERR_FILE_BAD` / retry replay; не озвучивать Matilda Daley (ложный матч `daley` → Atticus)
 - **v0.5.30** — убран workflow бэкапа в `C:\Temp\SovereignSyndicateBackup\`; post-commit очистка устаревших артефактов сборки; расширен `.gitignore`
 - **v0.5.29** — fix: `transformers` снова `>=4.57,<5` (coqui-tts несовместим с 5.x → worker падал на импорте); ошибки загрузки XTTS пишутся в `prefetch.log`
 - **v0.5.28** — venv всегда в `Mods\SovereignSyndicateVoice\venv\` (без junction на `C:\Temp`); миграция legacy Temp/junction в `install_voice_env.bat`; README и предупреждение в моде

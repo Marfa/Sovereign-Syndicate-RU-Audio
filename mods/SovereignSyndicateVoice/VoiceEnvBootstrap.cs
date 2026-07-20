@@ -23,16 +23,57 @@ namespace SovereignSyndicateVoice
             @"C:\Users\HYPERPC\IdeaProjects\Sovereign Syndicate\scripts",
         };
 
-        private const string LegacyRoot = @"C:\Temp\SovereignSyndicateVoice";
-
         internal static void Run()
         {
             VoicePaths.EnsureLayout();
             SyncScripts();
             MigrateLegacyRefs();
-            MigrateLegacyVenv();
+            MigrateModVoiceToCache();
             MigrateTeddyFromSharedOtto();
             LogStatus();
+        }
+
+        /// <summary>Move wav cache out of Program Files into C:\Temp\SovereignSyndicateVoice\voice.</summary>
+        private static void MigrateModVoiceToCache()
+        {
+            var modVoice = VoicePaths.ModVoiceRoot;
+            var cacheVoice = VoicePaths.VoiceRoot;
+            if (!Directory.Exists(modVoice))
+            {
+                return;
+            }
+
+            var moved = 0;
+            try
+            {
+                foreach (var characterDir in Directory.GetDirectories(modVoice))
+                {
+                    var character = Path.GetFileName(characterDir);
+                    var destDir = Path.Combine(cacheVoice, character);
+                    Directory.CreateDirectory(destDir);
+
+                    foreach (var src in Directory.GetFiles(characterDir, "*.wav"))
+                    {
+                        var dest = Path.Combine(destDir, Path.GetFileName(src));
+                        if (File.Exists(dest))
+                        {
+                            continue;
+                        }
+
+                        File.Move(src, dest);
+                        moved++;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning("VO env: mod voice migrate failed — " + ex.Message);
+            }
+
+            if (moved > 0)
+            {
+                MelonLogger.Msg("VO env: moved " + moved + " wav(s) Mods/voice → " + cacheVoice);
+            }
         }
 
         /// <summary>
@@ -131,27 +172,9 @@ namespace SovereignSyndicateVoice
             }
         }
 
-        private static void MigrateLegacyVenv()
-        {
-            var modsVenv = Path.Combine(VoicePaths.ModRoot, "venv", "Scripts", "python.exe");
-            if (File.Exists(modsVenv))
-            {
-                return;
-            }
-
-            var legacyVenv = Path.Combine(LegacyRoot, "venv", "Scripts", "python.exe");
-            if (!File.Exists(legacyVenv))
-            {
-                return;
-            }
-
-            MelonLogger.Warning(
-                "VO env: venv only in legacy C:\\Temp — run install_voice_env.bat to copy into Mods\\SovereignSyndicateVoice\\venv");
-        }
-
         private static void MigrateLegacyRefs()
         {
-            var legacyRefs = Path.Combine(LegacyRoot, "refs");
+            var legacyRefs = Path.Combine(VoicePaths.CacheRoot, "refs");
             if (!Directory.Exists(legacyRefs))
             {
                 return;
@@ -208,7 +231,7 @@ namespace SovereignSyndicateVoice
             }
 
             if (!File.Exists(VoicePaths.VenvPython) &&
-                !File.Exists(Path.Combine(LegacyRoot, "venv", "Scripts", "python.exe")))
+                !File.Exists(Path.Combine(VoicePaths.CacheRoot, "venv", "Scripts", "python.exe")))
             {
                 MelonLogger.Warning(
                     "VO env: XTTS venv missing — run install_voice_env.bat (installs into Mods\\SovereignSyndicateVoice\\venv)");

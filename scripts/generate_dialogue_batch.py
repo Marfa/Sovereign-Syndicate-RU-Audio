@@ -23,11 +23,11 @@ DEFAULT_PRIORITY = Path(
     r"C:\Program Files (x86)\Steam\steamapps\common\Sovereign Syndicate"
     r"\Mods\SovereignSyndicateVoice\prefetch_priority.tsv"
 )
-DEFAULT_OUT = Path(
+DEFAULT_OUT = Path(r"C:\Temp\SovereignSyndicateVoice\voice")
+DEFAULT_MOD_ROOT = Path(
     r"C:\Program Files (x86)\Steam\steamapps\common\Sovereign Syndicate"
-    r"\Mods\SovereignSyndicateVoice\voice"
+    r"\Mods\SovereignSyndicateVoice"
 )
-DEFAULT_MOD_ROOT = DEFAULT_OUT.parent
 LOCK_PATH = DEFAULT_MOD_ROOT / "prefetch.lock"
 SHUTDOWN_PATH = DEFAULT_MOD_ROOT / "prefetch_shutdown"
 LOG_PATH = DEFAULT_MOD_ROOT / "prefetch.log"
@@ -163,16 +163,22 @@ def generate_one(
         return False
 
     out_wav.parent.mkdir(parents=True, exist_ok=True)
+    tmp_wav = out_wav.with_name(f"{key}.wav.part")
+    tmp_wav.unlink(missing_ok=True)
     log(f"[gen] {character} {key} ({len(tts_text)} chars)")
-    tts.tts_to_file(
-        text=tts_text,
-        speaker_wav=str(ref),
-        language="ru",
-        file_path=str(out_wav),
-        split_sentences=False,
-    )
-    cleanup_wav(out_wav)
-    apply_character_voice_fx(out_wav, character)
+    try:
+        tts.tts_to_file(
+            text=tts_text,
+            speaker_wav=str(ref),
+            language="ru",
+            file_path=str(tmp_wav),
+            split_sentences=False,
+        )
+        cleanup_wav(tmp_wav)
+        apply_character_voice_fx(tmp_wav, character)
+        tmp_wav.replace(out_wav)
+    finally:
+        tmp_wav.unlink(missing_ok=True)
     pop_priority_key(key, priority_path)
     return True
 
@@ -243,11 +249,7 @@ def run_daemon(args: argparse.Namespace) -> None:
     log("XTTS warm worker started")
     tts = None
     try:
-        try:
-            tts = load_tts()
-        except Exception as exc:
-            log(f"XTTS load failed: {exc}")
-            raise
+        tts = load_tts()
         try:
             from xtts_audio import get_accentor
 
@@ -282,9 +284,6 @@ def run_daemon(args: argparse.Namespace) -> None:
                 log("XTTS worker shutdown requested")
                 break
         log("XTTS worker exit")
-    except Exception as exc:
-        log(f"XTTS worker crashed: {exc}")
-        raise
     finally:
         if tts is not None:
             unload_tts(tts)

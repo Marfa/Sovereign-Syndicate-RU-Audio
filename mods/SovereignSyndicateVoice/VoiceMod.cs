@@ -5,7 +5,7 @@ using HarmonyLib;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.5.30", "themarfa")]
+[assembly: MelonInfo(typeof(SovereignSyndicateVoice.VoiceMod), "Sovereign Syndicate Voice", "0.5.31", "themarfa")]
 [assembly: MelonGame("Crimson Herring Studios", "Sovereign Syndicate")]
 
 namespace SovereignSyndicateVoice
@@ -23,13 +23,14 @@ namespace SovereignSyndicateVoice
             Instance = this;
             VoiceEnvBootstrap.Run();
             VoiceSettings.LoadOrCreate();
-            Player = new VoicePlayer(VoicePaths.VoiceRoot);
+            Player = new VoicePlayer(VoicePaths.VoiceRoot, VoicePaths.ModVoiceRoot);
             EnsureAudioHost();
 
             _harmony = new HarmonyLib.Harmony("sovereign.syndicate.voice");
             _harmony.PatchAll(typeof(VoiceMod).Assembly);
 
-            MelonLogger.Msg("Voice root: " + Player.VoiceRoot);
+            MelonLogger.Msg("Voice cache: " + VoicePaths.VoiceRoot);
+            MelonLogger.Msg("Voice fallback: " + VoicePaths.ModVoiceRoot);
             MelonLogger.Msg("VO via FMOD (game audio bus)");
             MelonCoroutines.Start(SubscribeDialogueHooksLoop());
         }
@@ -93,13 +94,15 @@ namespace SovereignSyndicateVoice
             Player?.StopAllVo();
             FmodVoicePlayer.Stop();
 
+            VoiceCacheCleanup.PurgeSessionWavs(VoicePaths.ModVoiceRoot);
+
             if (VoiceSettings.DeleteWavOnExit)
             {
                 VoiceCacheCleanup.PurgeSessionWavs(VoicePaths.VoiceRoot);
             }
             else
             {
-                MelonLogger.Msg("VO cleanup skipped (delete_wav_on_exit=false)");
+                MelonLogger.Msg("VO cache kept in " + VoicePaths.VoiceRoot + " (delete_wav_on_exit=false)");
             }
 
             if (AudioHost != null)

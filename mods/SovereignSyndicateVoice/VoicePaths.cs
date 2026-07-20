@@ -6,12 +6,12 @@ using UnityEngine;
 namespace SovereignSyndicateVoice
 {
     /// <summary>
-    /// All runtime paths live under Mods/SovereignSyndicateVoice (shipped by installer).
-    /// Legacy C:\Temp\... is only a fallback for older installs.
+    /// Mod runtime (DLL, scripts, refs, prefetch control files) under Mods/SovereignSyndicateVoice.
+    /// Generated wav cache lives in C:\Temp\SovereignSyndicateVoice\voice (writable, survives sessions).
     /// </summary>
     internal static class VoicePaths
     {
-        private const string LegacyRoot = @"C:\Temp\SovereignSyndicateVoice";
+        internal const string CacheRoot = @"C:\Temp\SovereignSyndicateVoice";
 
         private static string _modRoot;
         private static bool _resolved;
@@ -26,6 +26,12 @@ namespace SovereignSyndicateVoice
         }
 
         internal static string VoiceRoot
+        {
+            get { return Path.Combine(CacheRoot, "voice"); }
+        }
+
+        /// <summary>Optional shipped/session wav under Mods (fallback lookup only).</summary>
+        internal static string ModVoiceRoot
         {
             get { return Path.Combine(ModRoot, "voice"); }
         }
@@ -75,9 +81,6 @@ namespace SovereignSyndicateVoice
             get { return Path.Combine(ModRoot, "lines_ru"); }
         }
 
-        /// <summary>Legacy alias used by older VoicePlayer code.</summary>
-        internal const string DevVoiceRoot = LegacyRoot + @"\voice";
-
         internal static void EnsureResolved()
         {
             if (_resolved)
@@ -95,7 +98,7 @@ namespace SovereignSyndicateVoice
             return new[]
             {
                 VenvPython,
-                Path.Combine(LegacyRoot, "venv", "Scripts", "python.exe"),
+                Path.Combine(CacheRoot, "venv", "Scripts", "python.exe"),
                 @"C:\Users\HYPERPC\AppData\Local\Programs\Python\Python311\python.exe",
             };
         }
@@ -107,7 +110,7 @@ namespace SovereignSyndicateVoice
                 Path.Combine(ScriptsRoot, "generate_dialogue_batch.py"),
                 @"C:\Users\HYPERPC\IdeaProjects\Sovereign-Syndicate-RU-Audio\scripts\generate_dialogue_batch.py",
                 @"C:\Users\HYPERPC\IdeaProjects\Sovereign Syndicate\scripts\generate_dialogue_batch.py",
-                Path.Combine(LegacyRoot, "generate_dialogue_batch.py"),
+                Path.Combine(CacheRoot, "generate_dialogue_batch.py"),
             };
         }
 

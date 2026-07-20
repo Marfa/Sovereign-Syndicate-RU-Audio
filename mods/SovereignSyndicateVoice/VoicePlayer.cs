@@ -11,8 +11,6 @@ namespace SovereignSyndicateVoice
 {
     public sealed class VoicePlayer
     {
-        private const string DevVoiceRoot = VoicePaths.DevVoiceRoot;
-
         private static readonly Dictionary<string, string> CharacterTags = new Dictionary<string, string>
         {
             { "atticus", "_ATT_" },
@@ -22,15 +20,17 @@ namespace SovereignSyndicateVoice
         };
 
         private readonly string _voiceRoot;
+        private readonly string _fallbackVoiceRoot;
         private string _lastKey = string.Empty;
         private float _lastPlayTime;
         private float _lastLoadscreenTime;
 
         internal string ActiveLoadscreenKey { get; private set; }
 
-        public VoicePlayer(string voiceRoot)
+        public VoicePlayer(string voiceRoot, string fallbackVoiceRoot = null)
         {
             _voiceRoot = voiceRoot;
+            _fallbackVoiceRoot = fallbackVoiceRoot;
         }
 
         public string VoiceRoot
@@ -83,18 +83,18 @@ namespace SovereignSyndicateVoice
             TryPlayDialogueSubtitle(null, key, character);
         }
 
-        public void TryPlayDialogueSubtitle(DialogueEntry entry, string lineText, string character, int conversationId = -1)
+        public bool TryPlayDialogueSubtitle(DialogueEntry entry, string lineText, string character, int conversationId = -1)
         {
             if (entry == null || string.IsNullOrEmpty(character))
             {
                 MelonLogger.Msg("VO skip (no speaker): id=" + (entry != null ? entry.id.ToString() : "?"));
-                return;
+                return false;
             }
 
             if (VoiceText.IsNonVerbalPause(lineText))
             {
                 MelonLogger.Msg("VO skip (ellipsis): id=" + entry.id);
-                return;
+                return false;
             }
 
             if (conversationId < 0)
@@ -116,17 +116,18 @@ namespace SovereignSyndicateVoice
                 {
                     VoicePendingReplay.Cancel();
                     MelonLogger.Msg("VO play dialogue: id=" + entry.id + " key=" + key + " (" + duration.ToString("F1") + "s)");
-                    return;
+                    return true;
                 }
 
                 MelonLogger.Warning("VO FMOD failed dialogue id=" + entry.id + " key=" + key);
-                return;
+                return false;
             }
 
             MelonLogger.Msg("VO miss dialogue: " + entry.id + " (" + character + ")");
             var missText = lineText ?? entry.DialogueText;
             VoicePrefetch.RequestLine(character, DialogueVoiceKeys.Primary(entry, conversationId), missText);
             VoicePendingReplay.Register(entry, character, missText);
+            return false;
         }
 
         internal void StopLoadscreenVo()
@@ -213,13 +214,14 @@ namespace SovereignSyndicateVoice
                 return path;
             }
 
-            if (string.Equals(_voiceRoot, DevVoiceRoot, StringComparison.OrdinalIgnoreCase) ||
-                !Directory.Exists(DevVoiceRoot))
+            if (string.IsNullOrEmpty(_fallbackVoiceRoot) ||
+                string.Equals(_voiceRoot, _fallbackVoiceRoot, StringComparison.OrdinalIgnoreCase) ||
+                !Directory.Exists(_fallbackVoiceRoot))
             {
                 return null;
             }
 
-            return ResolveWavPathInRoot(DevVoiceRoot, key, character);
+            return ResolveWavPathInRoot(_fallbackVoiceRoot, key, character);
         }
 
         private static string ResolveWavPathInRoot(string root, string key, string character)
@@ -277,7 +279,7 @@ namespace SovereignSyndicateVoice
             foreach (var name in names)
             {
                 var direct = Path.Combine(dir, name + ".wav");
-                if (File.Exists(direct))
+                if (IsReadableWav(direct))
                 {
                     return direct;
                 }
@@ -288,7 +290,7 @@ namespace SovereignSyndicateVoice
                 var stem = Path.GetFileNameWithoutExtension(file);
                 foreach (var name in names)
                 {
-                    if (string.Equals(stem, name, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(stem, name, StringComparison.OrdinalIgnoreCase) && IsReadableWav(file))
                     {
                         return file;
                     }
@@ -379,6 +381,40 @@ namespace SovereignSyndicateVoice
             var invalid = Path.GetInvalidFileNameChars();
             var chars = value.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray();
             return new string(chars).Trim();
+        }
+
+        private static bool IsReadableWav(string path)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                {
+                    return false;
+                }
+
+                var info = new FileInfo(path);
+                if (info.Length < 44)
+                {
+                    return false;
+                }
+
+                using (var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    var header = new byte[12];
+                    if (stream.Read(header, 0, header.Length) < header.Length)
+                    {
+                        return false;
+                    }
+
+                    return header[0] == (byte)'R' && header[1] == (byte)'I' && header[2] == (byte)'F' &&
+                           header[3] == (byte)'F' && header[8] == (byte)'W' && header[9] == (byte)'A' &&
+                           header[10] == (byte)'V' && header[11] == (byte)'E';
+                }
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static string MatchCharacterFromKey(string key)
