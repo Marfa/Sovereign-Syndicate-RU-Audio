@@ -1,0 +1,4 @@
+#!/bin/sh
+# After each commit, remove stale build artifacts (older than 7 days).
+cd "$(git rev-parse --show-toplevel)" || exit 0
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "scripts/cleanup_build_artifacts.ps1" || true

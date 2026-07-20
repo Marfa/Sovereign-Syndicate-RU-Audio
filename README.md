@@ -206,6 +206,7 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 ## Changelog (кратко)
 
+- **v0.5.30** — убран workflow бэкапа в `C:\Temp\SovereignSyndicateBackup\`; post-commit очистка устаревших артефактов сборки; расширен `.gitignore`
 - **v0.5.29** — fix: `transformers` снова `>=4.57,<5` (coqui-tts несовместим с 5.x → worker падал на импорте); ошибки загрузки XTTS пишутся в `prefetch.log`
 - **v0.5.28** — venv всегда в `Mods\SovereignSyndicateVoice\venv\` (без junction на `C:\Temp`); миграция legacy Temp/junction в `install_voice_env.bat`; README и предупреждение в моде
 - **v0.5.27** — security tooling: `scripts/check_security.ps1`, `AGENTS.md`, pre-commit gitleaks; pip-audit в `install_voice_env.bat`; fix bat для путей с `(x86)` (попытка bump transformers 5.x откачена в 0.5.29)
